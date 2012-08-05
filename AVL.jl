@@ -22,7 +22,7 @@ export isempty, length, show, LEFT, RIGHT
 export assign, has, get, shift, pop, del
 export first, last, before, after, rank, select
 export valid
-export union, intersect, join, split
+export union, intersect #, join, split
 
 abstract Associative{K, V}
 

@@ -18,7 +18,7 @@ require("AVLutil.jl")
 require("AVLset_ops.jl") 
 
 export SortDict
-export isempty, length, show, LEFT, RIGHT
+export isempty, length, show
 export assign, has, get, shift, pop, del
 export first, last, before, after, rank, select
 export valid

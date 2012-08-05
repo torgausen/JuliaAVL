@@ -83,7 +83,7 @@ end
 
 function ref{K, V} (sd :: SortDict{K, V}, ind :: Range1{K}) 
 	#println(first(ind), " ", last(ind))
-	#range(sd.tree, first(ind), last(ind), sd.cf)
+	range(sd.tree, first(ind), last(ind), sd.cf)
 end 
 
 function ref{K, V} (sd :: SortDict{K, V}, ind :: Range{K}) 

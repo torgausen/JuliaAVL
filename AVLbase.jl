@@ -61,6 +61,13 @@ notempty (node :: Avl) = isa(node, Node)
 length{K, V}(node :: Nil{K, V}) = 0
 length{K, V}(node :: Node{K, V}) = node.count
 
+height{K, V}(node :: Nil{K, V}) = 0
+function height{K, V}(node :: Node{K, V})
+	if node.bal == RIGHT
+		1 + height(node.child[LEFT])
+	end
+	1 + height(node.child[RIGHT])
+end
 
 
 ######################################################################

@@ -314,7 +314,7 @@ function last{K, V}(node :: Node{K, V})
 end
 
 # deletes either first or last element accodring to variable side, which should be LEFT or RIGHT
-function del_extreme{K, V}(node :: Avl{K, V}, side)
+function del_extreme{K, V}(node :: Avl{K, V}, side :: Int8)
 	edis = UNISIDE - side
 	if isempty(node.child[side])  # at the bottom yet?
 		return (true, 1, (node.key, node.value), node.child[edis])

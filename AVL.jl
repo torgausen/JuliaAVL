@@ -12,14 +12,14 @@ module AVL
 	
 import Base.*
 		
-require ("AVLbase.jl")
+require("AVLbase.jl")
 require("AVLutil.jl")
 require("AVLset_ops.jl") # stupid set ops don't work yet
 
 
 export SortDict, valid, isempty, length, show, assign, first, last, shift, pop, del, has, get, del_extreme, LEFT, RIGHT
 export before, after, rank, select
-export union, intersect
+#export union, intersect, join, split
 
 abstract Associative{K, V}
 
@@ -130,9 +130,9 @@ has{K, V} (sd :: SortDict{K, V}, key :: K) = has(sd.tree, key, sd.cf)
 
 get{K, V} (sd :: SortDict{K, V}, key :: K) = get(sd.tree, key, sd.cf)
 
-rank{K, V} (sd :: SortDict{K, V}, key :: K) = rank(sd.tree, key, sd.cf)
+rank{K, V} (sd :: SortDict{K, V}, key :: K) = rank(sd.tree, key, sd.cf) + 1
 
-select{K, V} (sd :: SortDict{K, V}, ind :: Int) = select(sd.tree, ind)
+select{K, V} (sd :: SortDict{K, V}, ind :: Int) = select(sd.tree, ind - 1)
 
 # keyselect (range) 3 variants: upto k, between k1, k2, from k, but these can be accessed with refs
 #

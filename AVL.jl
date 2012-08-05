@@ -1,7 +1,7 @@
 # TODO:
 # fix printing, use sshow
-# fix sd interator
-# fix set ops! add nlogn intersect, add sanity tests, add performance tests to find good values for algorithm choice
+# fix sd iterator
+# fix set_ops, add nlogn intersect, add sanity tests, add performance tests to find good values for algorithm choice
 # add arbitrary iterators Forward(node), Backward(node), Forward(node, key), Backward(node, key)
 # Forward(key) and Backward(key) iterator constructors 
 # sd[a:b] doesn't work yet

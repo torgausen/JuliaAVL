@@ -1,10 +1,12 @@
 # TODO:
 # fix printing, use sshow
 # fix sd interator
-# fix set ops!
+# fix set ops! add nlogn intersect, add sanity tests, add performance tests to find good values for algorithm choice
 # add arbitrary iterators Forward(node), Backward(node), Forward(node, key), Backward(node, key)
-#
-# sd[2:4] doesn't work yet
+# Forward(key) and Backward(key) iterator constructors 
+# sd[a:b] doesn't work yet
+# set difference, (use '-' ?), 
+
 
 module AVL
 	
@@ -18,11 +20,6 @@ require("AVLset_ops.jl") # stupid set ops don't work yet
 export SortDict, valid, isempty, length, show, assign, first, last, shift, pop, del, has, get, del_extreme, LEFT, RIGHT
 export before, after, rank, select
 export union, intersect
-
-#export Forward
-# union, intersect, difference, (use '-' ?), 
-
-
 
 abstract Associative{K, V}
 

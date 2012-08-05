@@ -4,7 +4,7 @@ JuliaAVL
 Simple AVL tree for Julia
 
 
-PLEASE NOTE: This whole library is still under construction and will likely be remolded with heights instead of (or in addition to?) balance factors. The reason is that I just discovered an AVL tree should support log(n) 'join' and 'split' operations. This is why I do not worry much about api yet. I hope to get a 0.01 release this month. 
+PLEASE NOTE: This whole library is still under construction and will likely be remolded with heights instead of (or in addition to?) balance factors. The reason is that I just discovered an AVL tree should support log(n) 'join' and 'split' operations. This is why I do not worry much about api yet. I hope to get a presentable version this month. 
 
 
 An AVL tree is a balanced binary search tree. Example:

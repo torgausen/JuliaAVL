@@ -10,7 +10,6 @@ const BALANCED = int8(0)
 const LEFT = int8(1)
 const RIGHT = int8(2)
 const UNISIDE = LEFT + RIGHT 
-const UNION_RATIO = 1.0
 
 
 abstract Avl{K, V} 
@@ -24,9 +23,9 @@ type Node{K, V} <: Avl{K, V}
 	child :: Array{Avl{K, V}, 1}
 	key :: K
 	value :: V
-	counter :: Int
+	count :: Int
 	bal :: Int8
-	# NOTE: the counter and balance fields can later be packed into one 64 (62+2), or 32 (30+2) bit integer. 
+	# NOTE: the count and balance fields can later be packed into one 64 (62+2), or 32 (30+2) bit integer. 
 	# It's just simpler to keep them appart while working on the algorithms
 end
 # 
@@ -42,7 +41,7 @@ end
 # 		hl, cl, node.child[LEFT] = rec(fst, mid - 1)
 # 		hr, cr, node.child[RIGHT] = rec(mid + 1, lst)
 # 		count = cl + cr + 1
-# 		node.counter = count
+# 		node.count = count
 # 		node.bal = [LEFT, BALANCED, RIGHT] [(hr - hl) + 2]
 # 		return max(hl, hr) + 1, count, node
 # 	end
@@ -60,7 +59,7 @@ isempty (node :: Avl) = isa(node, Nil)
 notempty (node :: Avl) = isa(node, Node)
 
 length{K, V}(node :: Nil{K, V}) = 0
-length{K, V}(node :: Node{K, V}) = node.counter
+length{K, V}(node :: Node{K, V}) = node.count
 
 
 
@@ -70,14 +69,14 @@ copy{K, V}(node :: Nil{K, V}) = node
 function copy{K, V}(node :: Node{K, V})
 	left = copy(node.child[LEFT])
 	right = copy(node.child[RIGHT])
-	Node([left, right], node.counter, node.bal)
+	Node([left, right], node.count, node.bal)
 end
 
-# INSTEAD OF SIMPLY THIS?
+# INSTEAD OF THIS?
 # copy{K,V}(node :: Nil{K, V}) = node
 # function copy{K,V}(node :: Node{K, V})  
 # 	Node([copy(node.child[LEFT]), copy(node.child[RIGHT])],
-# 	node.key, node.value, node.counter, node.bal)
+# 	node.key, node.value, node.count, node.bal)
 # end
 ######################################################################3
 
@@ -259,7 +258,7 @@ function assign{K, V}(node :: Node{K, V}, key :: K, value :: V, cf :: Function)
 	end
 	edis = UNISIDE - side 
 	longer, increment, node.child[side] = assign(node.child[side], key, value, cf)
-	node.counter += increment
+	node.count += increment
 	if longer
 		if node.bal == edis 
 			node.bal = BALANCED
@@ -281,7 +280,7 @@ function del_first{K, V}(node :: Avl{K, V})
 	end
  
 	shorter, decrement, ret_val, node.child[LEFT] = del_first(node.child[LEFT])
-	node.counter -= decrement
+	node.count -= decrement
 	
 	if shorter == false
 		return (false, decrement, ret_val, node)
@@ -305,7 +304,7 @@ function del_last{K, V}(node :: Avl{K, V})
 	end
  
 	shorter, decrement, ret_val, node.child[RIGHT] = del_last(node.child[RIGHT])
-	node.counter -= decrement
+	node.count -= decrement
 	
 	if shorter == false
 		return (false, decrement, ret_val, node)
@@ -332,7 +331,7 @@ function del_helper{K, V} (node :: Avl{K, V})
 	end 
 	
 	shorter, decrement, ret_val, node.child[RIGHT] = del_first(node.child[RIGHT])
-	node.counter -= decrement
+	node.count -= decrement
 	ret_val, node.key, node.value = (node.key, node.value), ret_val[KEY], ret_val[VALUE] 
 	if shorter 
 		if node.bal == RIGHT 
@@ -362,7 +361,7 @@ function del{K, V}(node :: Avl{K, V}, key :: K, cf :: Function)
 	edis = UNISIDE - side 
 
 	shorter, decrement, ret_val, node.child[side] = del(node.child[side], key, cf)
-	node.counter -= decrement
+	node.count -= decrement
 	if shorter == false 
 		return (false, decrement, ret_val, node)
 	end
@@ -407,11 +406,11 @@ function rotate(node, side)
 		node_Y.child[side] = node_X
 		node_Y.child[edis] = node
 		
-		count_X = node_X.counter - node_Y.counter + length(node_X.child[edis]) # X' = X - Y + b
-		count_Z = node.counter - node_X.counter + length(node.child[side]) # Z' = Z - X + c
-		node_Y.counter = count_X + count_Z + 1
-		node_X.counter = count_X
-		node.counter = count_Z
+		count_X = node_X.count - node_Y.count + length(node_X.child[edis]) # X' = X - Y + b
+		count_Z = node.count - node_X.count + length(node.child[side]) # Z' = Z - X + c
+		node_Y.count = count_X + count_Z + 1
+		node_X.count = count_X
+		node.count = count_Z
 		
 		if node_Y.bal == side 
 			node_Y.child[side].bal = BALANCED
@@ -444,11 +443,11 @@ function rotate(node, side)
 #
 	node_Y = node	 
 	node = node.child[side]	
-	count_X = node.counter	
+	count_X = node.count	
 	count_b = length(node.child[edis])
-	count_Y = node_Y.counter - count_X + count_b 
-	node_Y.counter = count_Y
-	node.counter = node.counter - count_b + count_Y
+	count_Y = node_Y.count - count_X + count_b 
+	node_Y.count = count_Y
+	node.count = node.count - count_b + count_Y
 	node_Y.child[side] = node.child[edis]
 	node.child[edis] = node_Y
 	

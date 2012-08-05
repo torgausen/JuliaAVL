@@ -321,7 +321,7 @@ function del_extreme{K, V}(node :: Avl{K, V}, side)
 	end
  
 	shorter, decrement, ret_val, node.child[side] = del_extreme(node.child[side], side)
-	node.counter -= decrement
+	node.count -= decrement
 	
 	if shorter == false
 		return (false, decrement, ret_val, node)

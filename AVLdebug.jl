@@ -22,7 +22,7 @@ function draw(node, show_values, show_counts, screen_cols)
 		plot_text(string(bal), x, yp)
 		yp += 1
 		if show_counts
-			plot_text(strcat(n.counter), x, yp)
+			plot_text(strcat(n.count), x, yp)
 			yp += 1
 		end
 		if show_values

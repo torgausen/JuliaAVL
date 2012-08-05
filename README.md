@@ -9,18 +9,18 @@ PLEASE NOTE: This whole library is still under construction and will likely be r
 
 An AVL tree is a balanced binary search tree. Example:
               
-              8
-             / \
-           /     \
-         /         \
-       /             \
-      4              10 
-     / \            /  \
-    /   \          /    \
-   /     \        /      \
-  3       5      9       12
- / \     / \            / 
-1   2   6   7         11 
+                  8
+                 / \
+               /     \
+             /         \
+           /             \
+          4              10 
+         / \            /  \
+        /   \          /    \
+       /     \        /      \
+      3       5      9       12
+     / \     / \            / 
+    1   2   6   7         11 
 
 
 The left side, rooted at 4, is completely balanced, and all children of node 4 have balance factor 0.

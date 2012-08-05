@@ -16,10 +16,12 @@ require("AVLbase.jl")
 require("AVLutil.jl")
 require("AVLset_ops.jl") # stupid set ops don't work yet
 
-
-export SortDict, valid, isempty, length, show, assign, first, last, shift, pop, del, has, get, del_extreme, LEFT, RIGHT
-export before, after, rank, select
-#export union, intersect, join, split
+export SortDict
+export isempty, length, show, LEFT, RIGHT
+export assign, has, get, shift, pop, del
+export first, last, before, after, rank, select
+export valid
+export union, intersect, join, split
 
 abstract Associative{K, V}
 
@@ -30,7 +32,7 @@ end
 
 SortDict(K, V) = SortDict{K, V} (nil(K, V), isless)
 
-SortDict{K,V}(ks :: Vector{K}, vs :: Vector{V}) = SortDict(ks, vs, isless)
+SortDict{K, V}(ks :: Vector{K}, vs :: Vector{V}) = SortDict(ks, vs, isless)
 
 isempty (sd :: SortDict) = isempty(sd.tree)
 
@@ -80,7 +82,7 @@ end
 
 function ref{K, V} (sd :: SortDict{K, V}, ind :: Range1{K}) 
 	#println(first(ind), " ", last(ind))
-	range(sd.tree, first(ind), last(ind), sd.cf)
+	#range(sd.tree, first(ind), last(ind), sd.cf)
 end 
 
 function ref{K, V} (sd :: SortDict{K, V}, ind :: Range{K}) 
@@ -116,7 +118,7 @@ function del_extreme{K, V} (sd :: SortDict{K, V}, side :: Bool)
 	if length(sd.tree) == 0
 		throw("Cannot delete from empty SortDict")
 	end
-	f, c, out, sd.tree = del_extreme(sd.tree, side + 1)
+	f, c, out, sd.tree = del_ultra(sd.tree, side + 1)
 	out
 end
 
@@ -151,24 +153,53 @@ after{K, V} (sd :: SortDict{K, V}, key :: K) = after(sd.tree, key, sd.cf)
 # valueIter
 #
 
+
+
+const UNION_RATIO = 1.0
 function union {K, V} (sd1 :: SortDict{K, V}, sd2 :: SortDict{K, V})
 	if sd1.cf != sd2.cf 
 		throw ("AVL union: no union with non-identical compare functions")
 	end
-	SortDict(union(sd1.tree, sd2.tree, sd1.cf), sd1.cf)
+	if length(sd1) < length(sd2)
+		sd1, sd2 = sd2, sd1
+	end
+	n = length(sd1)
+	m = length(sd2)
+	if UNION_RATIO * n < m * log2(n)
+#		println("union linear")
+		SortDict(union_linear(sd1.tree, sd2.tree, sd1.cf), sd1.cf)
+	else
+#		println("union mlogn")
+		SortDict(union_mlogn(sd1.tree, sd2.tree, sd1.cf), sd1.cf)
+	end
 end
  
+const INTERSECT_RATIO = 1.0
 function intersect {K, V} (sd1 :: SortDict{K, V}, sd2 :: SortDict{K, V}) 
 	if sd1.cf != sd2.cf 
 		throw ("AVL union: intersect with non-identical compare functions")
 	end
-	SortDict(intersect(sd1.tree, sd2.tree, sd1.cf), sd1.cf)
-end
- 
-# difference {K, V} (sd :: SortDict, ?) 
-#################################################################################################
+	if length(sd1) < length(sd2)
+		sd1, sd2 = sd2, sd1
+	end
+	
+	n = length(sd1)
+	m = length(sd2)
 
+	if INTERSECT_RATIO * n < m * log2(n)
+#		println("intersect linear")
+		SortDict(intersect_linear(sd1.tree, sd2.tree, sd1.cf), sd1.cf)
+	else
+#		println("intersect mlogn")
+		SortDict(intersect_mlogn(sd1.tree, sd2.tree, sd1.cf), sd1.cf)
+	end
 end
+
+
+
+
+end # module
+
 
 
 # TEST CODE
@@ -194,6 +225,14 @@ function run_tests()
 	sd = SortDict([-10 : 10], [-10 : 10] +1)
 	assert(first(sd) == (-10, -9))
 	assert(last(sd) == (10, 11))
+	
+	sd = SortDict([5 : 10], [5.0 : 10.0])
+	assert(rank(sd, 6) == 2, "rank broken")
+	assert(select(sd, 3) == (7,7.0), "select broken")
+	assert(after(sd, 7) == (8, 8.0), "after broken")
+	assert(after(sd, -77) == (5, 5.0), "after broken")
+	assert(before(sd, 7) == (6, 6.0), "before broken")
+	assert(before(sd, 77) == (10, 10.0), "before broken")
 
 	a = sort(rand(150))
 	sd = SortDict(a, a+1) 
@@ -205,9 +244,16 @@ function run_tests()
 	end
 	b = sort(b)
 	assert(a == b, "SortDict del broken")
+
+	a = SortDict([3 : 11], [3//1 : 11//1])
+	b = SortDict([-3 : 7], [-3//1 : 7//1])
+	c = SortDict([0 : 99], [0//1 : 99//1])
+	assert(union(a, b) == SortDict([-3 : 11], [-3//1 : 11//1]), "SortDict union broken")
+	assert(union(a, c) == SortDict([0 : 99], [0//1 : 99//1]), "SortDict union broken")
+	assert(intersect(a, b) == SortDict([3 : 7], [3//1 : 7//1]), "SortDict intersect broken")
+	assert(intersect(a, c) == SortDict([3 : 11], [3//1 : 11//1]), "SortDict intersect broken")
 end
 run_tests()
-
 
 
 

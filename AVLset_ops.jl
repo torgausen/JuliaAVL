@@ -1,13 +1,11 @@
 
-const UNION_RATIO = 1.0
-const INTERSECT_RATIO = 1.0
 
-
+require ("AVLbase.jl")
 require ("AVLutil.jl")
 
 
 # union of two trees in linear time (n + m)
-function linear_non_destr_union{K, V} (n1 :: Avl{K, V}, n2 :: Avl{K, V}, cf :: Function)
+function union_linear{K, V} (n1 :: Avl{K, V}, n2 :: Avl{K, V}, cf :: Function)
 	ks = Array(K, 0)
 	vs = Array(V, 0)
 	
@@ -96,10 +94,14 @@ end
 
 
 # non-destructive union of two trees in m log n time
-function union_nlogn_non_destr{K, V} (big :: Avl{K, V}, small :: Avl{K, V}, cf :: Function)
+
+union_mlogn{K, V} (big :: Nil{K, V}, small :: Nil{K, V}, cf :: Function) = big
+union_mlogn{K, V} (big :: Node{K, V}, small :: Nil{K, V}, cf :: Function) = big
+union_mlogn{K, V} (big :: Nil{K, V}, small :: Node{K, V}, cf :: Function) = small
+function union_mlogn{K, V} (big :: Avl{K, V}, small :: Avl{K, V}, cf :: Function)
 	stack = Array(Avl{K, V}, 0)
 	push(stack, nil(K, V))
-	out = copy(n1)
+	tree = copy(big)
 	while notempty(small)
 		while notempty(small)
 			if notempty(small.child[LEFT])
@@ -108,19 +110,19 @@ function union_nlogn_non_destr{K, V} (big :: Avl{K, V}, small :: Avl{K, V}, cf :
 				push(stack, s_node)
 				small = small.child[LEFT]
 			else 
-				assign(out, small.key, small.value, cf)
+				assign(tree, small.key, small.value, cf)
 				small = small.child[RIGHT]
 			end
 		end 
 		small = pop(stack)
 	end 
-	out
+	tree
 end
 
 
 
 # wait a minute... there must be a better way to do this?
-function intersect_linear_non_destr{K, V}(n1 :: Avl{K, V}, n2 :: Avl{K, V}, cf :: Function)
+function intersect_linear{K, V}(n1 :: Avl{K, V}, n2 :: Avl{K, V}, cf :: Function)
 
 	ks = Array(K, 0)
 	vs = Array(V, 0)
@@ -169,33 +171,24 @@ function intersect_linear_non_destr{K, V}(n1 :: Avl{K, V}, n2 :: Avl{K, V}, cf :
 			end
 		end	
 	end 
-	node = build(ks,vs)
-	return node
+	return build(ks,vs)
 end
-	
 
-
-# insert all items of small into big, return big
-function intersect_nlogn_non_destr{K, V}(big :: Node{K, V}, small :: Node{K, V}, cf :: Function)
-	stack = Array(Avl{K, V}, 0)
-	push(stack, nil(K, V))
-	out = copy(big)
-	while notempty(small)
-		while notempty(small)
-			if notempty(small.child[LEFT])
-				s_node = Node(small.key, small.value)
-				s_node.child[RIGHT] = small.child[RIGHT]
-				push(stack, s_node)
-				small = small.child[LEFT]
-			else 
-				assign(out, small.key, small.value, cf)
-				small = small.child[RIGHT]
-			end
-		end 
-		small = pop(stack)
-	end 
-	out
+intersect_nlogn{K, V} (big :: Nil{K, V}, small :: Nil{K, V}, cf :: Function) = big
+intersect_nlogn{K, V} (big :: Node{K, V}, small :: Nil{K, V}, cf :: Function) = small
+intersect_nlogn{K, V} (big :: Nil{K, V}, small :: Node{K, V}, cf :: Function) = big
+function intersect_mlogn{K, V} (big :: Avl{K, V}, small :: Avl{K, V}, cf :: Function)
+	ks = K[]
+	vs = V[]
+	for (key, value) in small
+		if has(big, key, cf)
+			push(ks, key)
+			push(vs, value)
+		end
+	end
+	build(ks, vs)
 end
+
 
  
 # # After completion, it dawned on me that this isn't linear time

@@ -297,7 +297,7 @@ end
 
 # last (node, b)
 
-first{K, V}(node :: Nil{K, V}) = throw ("function first called on empty SordDict{$K, $V}") 
+first{K, V}(node :: Nil{K, V}) = throw ("first called on empty SortDict{$K, $V}") 
 function first{K, V}(node :: Node{K, V})
 	while notempty(node.child[LEFT]) 
 		node = node.child[LEFT]
@@ -305,7 +305,7 @@ function first{K, V}(node :: Node{K, V})
 	(node.key, node.value)
 end
 
-last{K, V}(node :: Nil{K, V}) = throw ("function last called on empty SordDict{$K, $V}") 
+last{K, V}(node :: Nil{K, V}) = throw ("last called on empty SortDict{$K, $V}") 
 function last{K, V}(node :: Node{K, V})
 	while notempty(node.child[RIGHT]) 
 		node = node.child[RIGHT]
@@ -313,14 +313,25 @@ function last{K, V}(node :: Node{K, V})
 	(node.key, node.value)
 end
 
+ultra{K, V}(node :: Nil{K, V}, side :: Bool) = throw ("ultra called on empty SortDict{$K, $V}") 
+function ultra{K, V}(node :: Node{K, V}, side :: Bool)
+	side += 1
+	while notempty(node.child[side]) 
+		node = node.child[side]
+	end
+	(node.key, node.value)
+end
+
+
 # deletes either first or last element accodring to variable side, which should be LEFT or RIGHT
-function del_extreme{K, V}(node :: Avl{K, V}, side :: Int8)
+function del_ultra{K, V}(node :: Avl{K, V}, side :: Bool)
+	side += 1
 	edis = UNISIDE - side
 	if isempty(node.child[side])  # at the bottom yet?
 		return (true, 1, (node.key, node.value), node.child[edis])
 	end
  
-	shorter, decrement, ret_val, node.child[side] = del_extreme(node.child[side], side)
+	shorter, decrement, ret_val, node.child[side] = del_ultra(node.child[side], side)
 	node.count -= decrement
 	
 	if shorter == false

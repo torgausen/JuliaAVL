@@ -102,6 +102,7 @@ end
 
 
 
+
 # TO BE REMOVED
 #
 function show{K, V}(node :: Avl{K, V})
@@ -121,9 +122,9 @@ end
 has{K}(node :: Nil, key :: K, cf :: Function) = false
 function has{K, V}(node :: Node{K, V}, key :: K, cf :: Function)
 	if cf(key, node.key)
-		has(node.child[LEFT], key)
+		has(node.child[LEFT], key, cf)
 	elseif cf(node.key, key)
-		has(node.child[RIGHT], key)
+		has(node.child[RIGHT], key, cf)
 	else
 		return true
 	end

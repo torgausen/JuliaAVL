@@ -1,8 +1,9 @@
 # TODO:
 # fix printing, use sshow
 # fix sd iterator
-# fix set_ops, add nlogn intersect, add sanity tests, add performance tests to find good values for algorithm choice
-# add arbitrary iterators Forward(node), Backward(node), Forward(node, key), Backward(node, key)
+# fix add more sanity tests, add performance tests to find good values for algorithm choice
+# !!! add arbitrary iterators Forward(node), Backward(node), Forward(node, key), Backward(node, key) !!!
+# add join and split 
 # Forward(key) and Backward(key) iterator constructors 
 # sd[a:b] doesn't work yet
 # set difference, (use '-' ?), 
@@ -14,7 +15,7 @@ import Base.*
 		
 require("AVLbase.jl")
 require("AVLutil.jl")
-require("AVLset_ops.jl") # stupid set ops don't work yet
+require("AVLset_ops.jl") 
 
 export SortDict
 export isempty, length, show, LEFT, RIGHT

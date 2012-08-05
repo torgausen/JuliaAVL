@@ -31,15 +31,15 @@ The left child of node 10 has height 1, while the right child has height 2, so t
 An AVL tree cannot have balance factors other than -1, 0 1. This translates to a maximum height of about 1.44 log n, which is pretty good. See http://en.wikipedia.org/wiki/Avl_tree for details.
 
 
-The core data structure in AVL.jl is the node: 
+The core data structure is the node: 
 
-type Node{K, V} <: Avl{K, V}
-	child :: Array{Avl{K, V}, 1}
-	key :: K
-	value :: V
-	count :: Int
-	bal :: Int8
-end
+    type Node{K, V} <: Avl{K, V}
+    	child :: Array{Avl{K, V}, 1}
+    	key :: K
+    	value :: V
+    	count :: Int
+    	bal :: Int8
+    end
 
 Children are kept in a length-2 array, so that they can be selected with variables, rather than 'hard coded'. If they were named node.left and node.right, one could still do that, but as far as I can tell, one would then need an if branch. 
 

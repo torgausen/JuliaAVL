@@ -11,6 +11,9 @@ const LEFT = int8(1)
 const RIGHT = int8(2)
 const UNISIDE = LEFT + RIGHT 
 
+# I hate this function. It maps (-1, 0, +1) to 1, 0, 2. 
+# I am on the verge of introducing parent pointers just to avoid it.
+bal_conv(bal) = (LEFT, BALANCED, RIGHT)[bal + 2] 
 
 abstract Avl{K, V} 
 
@@ -28,31 +31,21 @@ type Node{K, V} <: Avl{K, V}
 	# NOTE: the count and balance fields can later be packed into one 64 (62+2), or 32 (30+2) bit integer. 
 	# It's just simpler to keep them appart while working on the algorithms
 end
-# 
-# # The keys must be sorted. This is tested in higher level functions. For a set, the keys must also be unique
-# function build{K, V}(ks :: Vector{K}, vs :: Vector{V})
-# 	function rec(fst, lst)
-# 		len = (lst - fst) + 1
-# 		if len <= 0
-# 			return 0, 0, Nil{K, V}()
-# 		end
-# 		mid = fst + ifloor(len / 2) 
-# 		node = Node(ks[mid], vs[mid])
-# 		hl, cl, node.child[LEFT] = rec(fst, mid - 1)
-# 		hr, cr, node.child[RIGHT] = rec(mid + 1, lst)
-# 		count = cl + cr + 1
-# 		node.count = count
-# 		node.bal = [LEFT, BALANCED, RIGHT] [(hr - hl) + 2]
-# 		return max(hl, hr) + 1, count, node
-# 	end
-# 	h, c, n = rec(1, length(vs))
-# 	return n
-# end
 
 function Node{K, V}(key :: K, value :: V) 
 	node = Node(Array(Avl{K, V}, 2), key, value, 1, BALANCED)
 	node.child = [nil(K, V), nil(K, V)]
 	return node
+end
+
+copy{K, V}(node :: Nil{K, V}) = node 
+function copy{K, V}(node :: Node{K, V}) 
+	out = Node(node.key, node.value)
+	out.child[LEFT]  = copy(node.child[LEFT])
+	out.child[RIGHT] = copy(node.child[RIGHT])
+	out.count = node.count
+	out.bal = node.bal
+	out
 end
 
 isempty (node :: Avl) = isa(node, Nil)
@@ -63,29 +56,18 @@ length{K, V}(node :: Node{K, V}) = node.count
 
 height{K, V}(node :: Nil{K, V}) = 0
 function height{K, V}(node :: Node{K, V})
-	if node.bal == RIGHT
-		1 + height(node.child[LEFT])
+	if node.bal != RIGHT
+		return 1 + height(node.child[LEFT])
 	end
 	1 + height(node.child[RIGHT])
 end
 
-
-######################################################################
-# WHY MUST I DO THIS:
 copy{K, V}(node :: Nil{K, V}) = node 
-function copy{K, V}(node :: Node{K, V})
+function copy{K, V}(node) # :: Node{K, V})
 	left = copy(node.child[LEFT])
 	right = copy(node.child[RIGHT])
 	Node([left, right], node.count, node.bal)
 end
-
-# INSTEAD OF THIS?
-# copy{K,V}(node :: Nil{K, V}) = node
-# function copy{K,V}(node :: Node{K, V})  
-# 	Node([copy(node.child[LEFT]), copy(node.child[RIGHT])],
-# 	node.key, node.value, node.count, node.bal)
-# end
-######################################################################3
 
 =={K,V}(a ::  Nil{K,V}, b :: Nil{K,V}) = true
 =={K,V}(a :: Node{K,V}, b :: Nil{K,V}) = false
@@ -98,26 +80,6 @@ function =={K,V}(a :: Node{K,V}, b :: Node{K,V})
 	# no need to bother with validity here
 end
 
-
-
-
-
-
-# TO BE REMOVED
-#
-function show{K, V}(node :: Avl{K, V})
-	#until = last(node)
-	#for pair in node
-		
-	function rec (node :: Avl)
-		if isempty(node) 
-			return ""
-		end
-		# I couldn't figure out how to add spaces and commas correctly
-		return strcat (rec(node.child[LEFT]), " (", node.key, ":", node.value, ") ", rec(node.child[RIGHT]))
-	end
- 	print (strcat ("(", rec(node), ")\n"))
-end	
 
 has{K}(node :: Nil, key :: K, cf :: Function) = false
 function has{K, V}(node :: Node{K, V}, key :: K, cf :: Function)
@@ -157,9 +119,9 @@ function range{K, V}(node :: Node{K, V}, fst :: K, lst :: K, cf :: Function)
 	out = Array((K, V), 0)
 	rec(n :: Nil{K, V}) = nothing
 	function rec(n :: Node{K, V})
-		if lst < n.key
+		if cf(lst, n.key)
 			rec(n.child[LEFT])
-		elseif fst > n.key
+		elseif cf(n.key, fst)
 			rec(n.child[RIGHT])
 		else
 			rec(n.child[LEFT])
@@ -171,62 +133,6 @@ function range{K, V}(node :: Node{K, V}, fst :: K, lst :: K, cf :: Function)
 	rec(node) 
 	out 
 end
-
-# returns tuple of (array of keys, array of values)
-# non destructive
-function flatten{K, V} (node :: Avl{K, V}, len :: Int)
-	ks = Array(K, len)
-	vs = Array(V, len)
-	stack = Array(Avl{K, V}, 0)
-	push(stack, nil(K, V)) # guard element
-	i = 1 
-	while notempty(node)
-		while notempty(node.child[LEFT])
-			s_node = Node(node.key, node.value)
-			s_node.child[RIGHT] = node.child[RIGHT]
-			push(stack, s_node)
-			node = node.child[LEFT]
-		end	
-		ks[i] = node.key
-		vs[i] = node.value
-		i += 1
-		node = node.child[RIGHT]
-		
-		if empty(node)
-			node = pop(stack)
-		end 
-	end 
-	return (ks, vs)
-end
-
-
-# Backup of flatten
-# # returns tuple of (array of keys, array of values)
-# function flatten{K, V} (node :: Avl{K, V})
-# 	ks = Array(K, 0)
-# 	vs = Array(V, 0)
-# 	stack = Array(Avl{K, V}, 0)
-# 	push(stack, nil(K, V))
-# 	while notempty(node)
-# 		while notempty(node)
-# 			if notempty(node.child[LEFT])
-# 				s_node = Node(node.key, node.value)
-# 				s_node.child[RIGHT] = node.child[RIGHT]
-# 				push(stack, s_node)
-# 				node = node.child[LEFT]
-# 			else 
-# 				push(ks, node.key)
-# 				push(vs, node.value)
-# 				node = node.child[RIGHT]
-# 			end
-# 		end 
-# 		node = pop(stack)
-# 	end 
-# 	return (ks, vs)
-# end
-
-
-
 
 # # only for multi-dicts
 #
@@ -280,55 +186,138 @@ function assign{K, V}(node :: Node{K, V}, key :: K, value :: V, cf :: Function)
 	return (longer, increment, node)
 end
 
-# del_first included here because it's so important to del
+# assume t1 and t2 not empty
+# also assume all keys in t1 < m < all keys in t2, where < is cf
+
+# takes a function of two arguments and a Bool returns the function with arguments swapped when
+# bool is true. Example isgreater = turn(isless, true).
+turn (f :: Function, b :: Bool) = (x, y) -> apply(f, ((x, y),(y, x))[b + 1])
+
+# same, but always turns the function.
+turn (f :: Function) = (x, y) -> apply(f, (y, x))
+
+
+# this function is destructive to t1. Need not be of course.
+# assume max(t1) less than m less than min(t2)
+function tjoin{K, V}(t1 :: Node{K, V}, m :: (K, V), t2 :: Avl{K, V})
+	function rec(p, h) 
+		#println("h = $h"); draw(p)
+		if h <= h2 + 1
+			n = Node(m[KEY], m[VALUE])
+			# println( h2, h)
+			# println("h: $h, h2: $(h2)")
+			
+			if side == RIGHT
+				n.bal = bal_conv(h2 - h)
+			elseif side == LEFT
+				n.bal = bal_conv(h - h2)
+			else
+				println("???")
+				exit(1)
+			end
+			
+			n.child[edis] = p
+			n.child[side] = t2
+			n.count = length(p) + length(t2) + 1
+			
+			#println("After construction") ; draw(n)
+
+			return(true, n) # longer, increment, node
+		end
+		longer, p.child[side] = rec(p.child[side], h - 1 - (p.bal == edis)) 
+		p.count = length(p.child[LEFT]) + length(p.child[RIGHT]) + 1
+		if longer
+			if p.bal == edis 
+				p.bal = BALANCED
+				longer = false
+			elseif p.bal == BALANCED 
+				p.bal = side
+			else  
+				longer, p = rotate(p, side)
+			end
+		end
+
+		return (longer, p)
+	end
+		
+	side = RIGHT 
+	h1 = height(t1)
+	h2 = height(t2)
+	if h2 > h1
+		# make sure h1 >= h2
+		t1, t2 = t2, t1
+		h1, h2 = h2, h1
+		side = LEFT
+	end
+	edis = UNISIDE - side
+	longer, node = rec(t1, h1) 
+	node
+end
+
+# load("AVLutil.jl")
+# function runme()
+# 	while true
+# 		n = int(rand() * 45) + 1
+# 		m = int(rand() * 45) + 1
+# 		an = [1:n]
+# 		am = 100 - reverse([1:m])
+# 		mid = (50, 50)
+# 	
+# 		
+# 		t1 = build(an, an)
+# 		t2 = build(am, am)
+# # 		println("--- NEW TRIAL ---  (mid = $n)")
+# # 		println("t1 = ")
+# # 		draw(t1)
+# # 		println("t2 = ")
+# # 		draw(t2)
+# # 		println("h1 = $(height(t1)), h2 = $(height(t2)). Begin descent: ")
+# # 		
+# 		t3 = tjoin(t1, mid, t2)
+# 		println("result:")
+# 		draw(t3)
+# 		if !(valid_avl(t3)[1]) 
+# 			println("NOT AVL STRUCTURE!")
+# 			break
+# 		elseif !(valid_count(t3)[1]) 
+# 			println("WRONG COUNT!")
+# 			draw(t3, false, true)
+# 			break
+# 		end
+# 	#	assert(valid_avl(t3), (n, m))
+# 	end
+# end
+#runme()
+
 # assumes node not empty
-function del_first{K, V}(node :: Avl{K, V})
-	if isempty(node.child[LEFT])  # at the bottom yet?
-		return (true, 1, (node.key, node.value), node.child[RIGHT])
+function del_ultra{K, V}(node :: Node{K, V}, b :: Bool)
+	side  = b + 1
+	edis = UNISIDE - side
+	if isempty(node.child[side])  # at the bottom yet?
+		return (true, 1, (node.key, node.value), node.child[edis])
 	end
  
-	shorter, decrement, ret_val, node.child[LEFT] = del_first(node.child[LEFT])
+	shorter, decrement, ret_val, node.child[side] = del_ultra(node.child[side], b)
 	node.count -= decrement
 	
 	if shorter == false
 		return (false, decrement, ret_val, node)
 	end
 	
-	if node.bal == LEFT 
+	if node.bal == side 
 		node.bal = BALANCED
 	elseif node.bal == BALANCED 
-		node.bal = RIGHT
+		node.bal = edis
 		shorter = false
-	else node.bal == RIGHT 
-		longer, node = rotate(node, RIGHT)
+	else node.bal == edis
+		longer, node = rotate(node, edis)
 		shorter = !longer
 	end
 	return (shorter, decrement, ret_val, node) 
 end
-# assumes node not empty
-function del_last{K, V}(node :: Avl{K, V})
-	if isempty(node.child[RIGHT])  # at the bottom yet?
-		return (true, 1, (node.key, node.value), node.child[LEFT])
-	end
- 
-	shorter, decrement, ret_val, node.child[RIGHT] = del_last(node.child[RIGHT])
-	node.count -= decrement
-	
-	if shorter == false
-		return (false, decrement, ret_val, node)
-	end
-	
-	if node.bal == RIGHT 
-		node.bal = BALANCED
-	elseif node.bal == BALANCED 
-		node.bal = LEFT
-		shorter = false
-	else node.bal == LEFT 
-		longer, node = rotate(node, LEFT)
-		shorter = !longer
-	end
-	return (shorter, decrement, ret_val, node) 
-end
+
+del_last{K, V}(node :: Avl{K, V}) = del_ultra(node, true)
+del_first{K, V}(node :: Avl{K, V}) = del_ultra(node, false)
 
 # Handles the case of actually deleting a node when it's found
 function del_helper{K, V} (node :: Avl{K, V})
@@ -355,7 +344,9 @@ function del_helper{K, V} (node :: Avl{K, V})
 	
  	return (shorter, decrement, ret_val, node)
 end
- 
+
+
+# Consider rotating to the bottom instead, perhaps more cache efficient?
 del{K, V}(node :: Nil{K, V}, key :: K, cf :: Function) = throw (KeyError(key))
 function del{K, V}(node :: Avl{K, V}, key :: K, cf :: Function)
 	side = key < node.key
@@ -393,7 +384,7 @@ function rotate(node, side)
 	if side_bal == edis 
 		
 		
-	#	side-edis rotate, 'side' is left, 'edis' is right
+	#	side-edis rotate, 'side' is left, 'edis' is right (in this drawing)
 	#
 	#
 	#                  Z                            Y'

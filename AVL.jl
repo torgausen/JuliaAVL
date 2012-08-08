@@ -1,38 +1,47 @@
 # TODO:
-# fix printing, use sshow
 # fix sd iterator
 # fix set_ops, add nlogn intersect, add sanity tests, add performance tests to find good values for algorithm choice
 # add arbitrary iterators Forward(node), Backward(node), Forward(node, key), Backward(node, key)
 # Forward(key) and Backward(key) iterator constructors 
-# sd[a:b] doesn't work yet
 # set difference, (use '-' ?), 
 
 
-module AVL
+#module AVL
 	
 import Base.*
 		
 require("AVLbase.jl")
 require("AVLutil.jl")
-require("AVLset_ops.jl") # stupid set ops don't work yet
+require("AVLset_ops.jl") 
 
-export SortDict
-export isempty, length, show, LEFT, RIGHT
-export assign, has, get, shift, pop, del
-export first, last, before, after, rank, select
-export valid
-export union, intersect, join, split
+#export SortDict
+#export isempty, length, show
+#export assign, has, get, shift, pop, del
+#export first, last, before, after, rank, select
+#export valid
+#export union, intersect#, join, split
 
 abstract Associative{K, V}
+
+
+
+
+# 
+# type Dict{K,V} <: Associative{K,V}
+#     Dict() = Dict{K,V}(0)
+#     end
+# end
 
 type SortDict{K, V} <: Associative{K, V}
 	tree :: Avl{K, V}
 	cf :: Function # compare function
+#	SortDict() = SortDict{K,V}(nil(K,V), isless)
 end
 
+SortDict() = SortDict(nil(Any,Any), isless)
+SortDict{K, V}(ks :: Vector{K}, vs :: Vector{V}) = SortDict(ks, vs, isless)
 SortDict(K, V) = SortDict{K, V} (nil(K, V), isless)
 
-SortDict{K, V}(ks :: Vector{K}, vs :: Vector{V}) = SortDict(ks, vs, isless)
 
 isempty (sd :: SortDict) = isempty(sd.tree)
 
@@ -44,10 +53,41 @@ copy{K,V}(sd :: SortDict{K,V}) = SortDict(copy(sd.tree), sd.cf)
 
 del_all{K, V}(sd :: SortDict{K, V}) = (sd.tree = nil(K, V); sd)
 
-function show{K, V}(sd :: SortDict{K, V}) 
-	println("compare function: $(string(sd.cf))")
-	show(sd.tree)
-end	
+
+function start{K, V} (sd :: SortDict{K, V}) 
+	start(sd.tree)
+end
+
+done{K, V}(sd :: SortDict{K, V}, state :: Stack_and_node {K, V}) = done(sd.tree, state)
+
+next{K, V}(sd :: SortDict{K, V}, state :: Stack_and_node {K, V}) = next(sd.tree, state)
+
+
+
+
+# function show{K, V}(sd :: SortDict{K, V}) 
+# 	println("compare function: $(string(sd.cf))")
+# 	show(sd.tree)
+# end	
+
+# stolen from dict.jl ;)
+function show{K, V}(io, t::Associative{K,V})
+    if isempty(t)
+       print(io, typeof(t).name.name,"()")
+    else
+        print(io, "{")
+        first = true
+        for (k, v) in t
+            first || print(io, ',')
+            first = false
+            show(io, k)
+            print(io, "=>")
+            show(io, v)
+        end
+        print(io, "}")
+    end
+end
+
 
 issorted(sd :: SortDict) = true
 
@@ -80,9 +120,10 @@ function ref{K, V}(sd :: SortDict{K, V}, key :: K)
 	ref(sd.tree, key, sd.cf)
 end 
 
+# Currently this just returns an array
 function ref{K, V} (sd :: SortDict{K, V}, ind :: Range1{K}) 
 	#println(first(ind), " ", last(ind))
-	#range(sd.tree, first(ind), last(ind), sd.cf)
+	range(sd.tree, first(ind), last(ind), sd.cf)
 end 
 
 function ref{K, V} (sd :: SortDict{K, V}, ind :: Range{K}) 
@@ -198,12 +239,12 @@ end
 
 
 
-end # module
+#end # module
 
 
 
 # TEST CODE
-import AVL.*
+#import AVL.*
 function run_tests()
 	sd = SortDict(Int, Float64)
 
@@ -235,7 +276,8 @@ function run_tests()
 	assert(before(sd, 77) == (10, 10.0), "before broken")
 
 	a = sort(rand(150))
-	sd = SortDict(a, a+1) 
+	sd = SortDict(a, a+1)
+	(ks,vs) = flatten(sd.tree); assert(sd.tree == build(ks, vs), "build or flatten broken")
 	b = Array(Any, 0)
 	while ! isempty(sd)
 		x = (del(sd, sd.tree.key))
@@ -252,6 +294,7 @@ function run_tests()
 	assert(union(a, c) == SortDict([0 : 99], [0//1 : 99//1]), "SortDict union broken")
 	assert(intersect(a, b) == SortDict([3 : 7], [3//1 : 7//1]), "SortDict intersect broken")
 	assert(intersect(a, c) == SortDict([3 : 11], [3//1 : 11//1]), "SortDict intersect broken")
+	println("Passed basic sanity tests. But remember, that doesn't mean a thing.")
 end
 run_tests()
 

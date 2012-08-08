@@ -179,80 +179,81 @@ end
 # end
 # 
 
-# before and after could perhaps also be written with rank and select?
-before{K, V} (node :: Nil{K, V}, key :: K) = throw("before called on Nil{$K, $V}")
-function before{K, V} (node :: Node{K, V}, key :: K, cf :: Function) 
-	stack = Array((K, V), 0)
-	function find_in_path()
-		if isempty(stack)
-			throw("node has no key before $key")
-		end
-		best = pop(stack)
-		while cf(key, best[KEY])
-			best = pop(stack)
-		end
-		for pair in stack
-			if cf(pair[KEY], key) && cf(best[KEY], pair[KEY])
-				best = pair
-			end
-		end
-		best
-	end
-	while notempty(node)
-		if cf(key, node.key)
-			push(stack, (node.key, node.value))
-			node = node.child[LEFT]
-		elseif cf(node.key, key)
-			push(stack, (node.key, node.value))
-			node = node.child[RIGHT]
-		else
-			if isempty(node.child[LEFT])
-				break
-			else
-				return last(node.child[LEFT])
-			end
-		end 
-	end 
-	return find_in_path()
-end
 
-# before and after could perhaps also be written with rank and select?
-after{K, V} (node :: Nil{K, V}, key :: K) = throw("after called on Nil{$K, $V}")
-function after{K, V} (node :: Node{K, V}, key :: K, cf :: Function) 
-	stack = Array((K, V), 0)
-	function find_in_path()
-		if isempty(stack)
-			throw("node has no key after $key")
-		end
-		best = pop(stack)
-		while cf(best[KEY], key)
-			best = pop(stack)
-		end
-		for pair in stack
-			if cf(key, pair[KEY]) && cf(pair[KEY], best[KEY])
-				best = pair
-			end
-		end
-		best
-	end
-	while notempty(node)
-		if cf(node.key, key)
-			push(stack, (node.key, node.value))
-			node = node.child[RIGHT]
-		elseif cf(key, node.key)
-			push(stack, (node.key, node.value))
-			node = node.child[LEFT]
-		else
-			if isempty(node.child[RIGHT])
-				break
-			else
-				return first(node.child[RIGHT])
-			end
-		end 
-	end 
-	return find_in_path()
-end
-
+# 
+# before{K, V} (node :: Nil{K, V}, key :: K) = throw("before called on Nil{$K, $V}")
+# function before{K, V} (node :: Node{K, V}, key :: K, cf :: Function) 
+# 	stack = Array((K, V), 0)
+# 	function find_in_path()
+# 		if isempty(stack)
+# 			throw("node has no key before $key")
+# 		end
+# 		best = pop(stack)
+# 		while cf(key, best[KEY])
+# 			best = pop(stack)
+# 		end
+# 		for pair in stack
+# 			if cf(pair[KEY], key) && cf(best[KEY], pair[KEY])
+# 				best = pair
+# 			end
+# 		end
+# 		best
+# 	end
+# 	while notempty(node)
+# 		if cf(key, node.key)
+# 			push(stack, (node.key, node.value))
+# 			node = node.child[LEFT]
+# 		elseif cf(node.key, key)
+# 			push(stack, (node.key, node.value))
+# 			node = node.child[RIGHT]
+# 		else
+# 			if isempty(node.child[LEFT])
+# 				break
+# 			else
+# 				return last(node.child[LEFT])
+# 			end
+# 		end 
+# 	end 
+# 	return find_in_path()
+# end
+# 
+# # before and after could perhaps also be written with rank and select?
+# after{K, V} (node :: Nil{K, V}, key :: K) = throw("after called on Nil{$K, $V}")
+# function after{K, V} (node :: Node{K, V}, key :: K, cf :: Function) 
+# 	stack = Array((K, V), 0)
+# 	function find_in_path()
+# 		if isempty(stack)
+# 			throw("node has no key after $key")
+# 		end
+# 		best = pop(stack)
+# 		while cf(best[KEY], key)
+# 			best = pop(stack)
+# 		end
+# 		for pair in stack
+# 			if cf(key, pair[KEY]) && cf(pair[KEY], best[KEY])
+# 				best = pair
+# 			end
+# 		end
+# 		best
+# 	end
+# 	while notempty(node)
+# 		if cf(node.key, key)
+# 			push(stack, (node.key, node.value))
+# 			node = node.child[RIGHT]
+# 		elseif cf(key, node.key)
+# 			push(stack, (node.key, node.value))
+# 			node = node.child[LEFT]
+# 		else
+# 			if isempty(node.child[RIGHT])
+# 				break
+# 			else
+# 				return first(node.child[RIGHT])
+# 			end
+# 		end 
+# 	end 
+# 	return find_in_path()
+# end
+# 
 
 
 
@@ -291,6 +292,16 @@ function rank{K, V}(node :: Avl{K, V}, key :: K, cf :: Function)
 	rec(node, 0)
 end
 
+before{K, V} (node :: Node{K, V}, key :: K, cf :: Function) = select(node, rank(node, key, cf) - 1)
+
+function after{K, V} (node :: Node{K, V}, key :: K, cf :: Function) 
+	tmp = first(node)
+	if cf(key, tmp[KEY])
+		tmp
+	else
+		select(node, rank(node, key, cf) + 1)
+	end
+end
 
 
 # first (node, n) # same as take in haskell

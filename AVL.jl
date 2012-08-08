@@ -26,16 +26,10 @@ abstract Associative{K, V}
 
 
 
-# 
-# type Dict{K,V} <: Associative{K,V}
-#     Dict() = Dict{K,V}(0)
-#     end
-# end
 
 type SortDict{K, V} <: Associative{K, V}
 	tree :: Avl{K, V}
 	cf :: Function # compare function
-#	SortDict() = SortDict{K,V}(nil(K,V), isless)
 end
 
 SortDict() = SortDict(nil(Any,Any), isless)
@@ -178,7 +172,7 @@ rank{K, V} (sd :: SortDict{K, V}, key :: K) = rank(sd.tree, key, sd.cf) + 1
 select{K, V} (sd :: SortDict{K, V}, ind :: Int) = select(sd.tree, ind - 1)
 
 # keyselect (range) 3 variants: upto k, between k1, k2, from k, but these can be accessed with refs
-#
+
 before{K, V} (sd :: SortDict{K, V}, key :: K) = before(sd.tree, key, sd.cf)
 
 after{K, V} (sd :: SortDict{K, V}, key :: K) = after(sd.tree, key, sd.cf)

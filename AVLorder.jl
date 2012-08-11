@@ -36,231 +36,64 @@ end
 
 
 
-type Stack_and_node {K, V}
-	stack :: Array{Avl{K, V}, 1}
-	node :: Avl{K, V}
+
+before{K, V} (node :: Nil{K, V}, key :: K, cf :: Function) = throw("before: before called on Nil{$K, $V}")
+function before{K, V} (node :: Node{K, V}, key :: K, cf :: Function)
+	best = nothing
+	while notempty(node)
+		if cf(key, node.key)
+			node = node.child[LEFT]
+			if isempty(node)
+				throw("before: nothing before $key")
+			end
+		elseif cf(node.key, key)
+			best = (node.key, node.value)
+			node = node.child[RIGHT]
+		else
+			if isempty (node.child[LEFT])
+				if best != nothing
+					return best
+				end
+				throw("before: nothing before $key")
+			else
+				return last(node.child[LEFT])
+			end
+		end
+	end
+	return best
 end
 
-# todo: add arbitrary iterators
-#
-# type Forward{K, V}
-# 	node :: Avl{K,V}
-# end
-# 
-# function Forward{K, V}(node :: Avl{K, V}, key :: K, cf :: Function)
-# 	stack = Array(Avl{K, V}, 0)
-# 	push(stack, nil(K, V))
-# 	if cf(key, node.key)
-# 		s_node = Node(node.key, node.value) 
-# 		s_node.child[RIGHT] = node.child[RIGHT]
-# 		push(stack, s_node)
-# 		node = node.child[LEFT]
-# 	elseif cf(node.key, key)
-# 		node = node.child[RIGHT]
-# 	else
-# 		return Stack_and_node{K, V}(stack, node)
-# 	end
-# end
-# 
-# function start{K, V} (Node :: Avl{K, V}) 
-# 	iter
-# end	
-
-
-
-
-
-######################
-
-function start{K, V} (node :: Avl{K, V}) 
-	state = Stack_and_node(Array(Avl{K, V}, 0), node)
-	push(state.stack, nil(K, V)) # guard element
-	state
+after{K, V} (node :: Nil{K, V}, key :: K, cf :: Function) = throw("after: after called on Nil{$K, $V}")
+function after{K, V} (node :: Node{K, V}, key :: K, cf :: Function)
+	best = nothing
+	while notempty(node)
+		if cf(key, node.key)
+			best = (node.key, node.value)
+			node = node.child[LEFT]
+		elseif cf(node.key, key)
+			node = node.child[RIGHT]
+			if isempty(node)
+				throw("after: nothing after $key")
+			end
+		else
+			if isempty (node.child[RIGHT])
+				if best != nothing
+					return best
+				end
+				throw("after: nothing after $key")
+			else
+				return first(node.child[RIGHT])
+			end
+		end
+	end
+	return best
 end
 
-done{K, V}(junk :: Avl{K, V}, state :: Stack_and_node {K, V}) = isempty(state.stack)
-
-function next{K, V} (junk :: Avl{K, V}, state :: Stack_and_node {K, V}) 
-	stack = state.stack
-	node = state.node
-	while notempty(node.child[LEFT])
-		s_node = Node(node.key, node.value)
-		s_node.child[RIGHT] = node.child[RIGHT]
-		push(stack, s_node)
-		node = node.child[LEFT]
-	end 
-	elem = (node.key, node.value)
-	node = node.child[RIGHT]
-	if isempty(node)
-		node = pop(stack)
-	end 
-	state.stack = stack
-	state.node = node
-	return elem, state
-end
-
-#for x in iter(sd, key, false)
-	
-
-# # general version of 'before' and 'after' with direction flag
-# nextto{K, V} (node :: Nil{K, V}, key :: K, dir :: Bool) = throw("nextto called on Nil{$K, $V}")
-# function nextto{K, V} (node :: Node{K, V}, key :: K, dir :: Bool) 
-# 	stack = Array((K, V), 0)
-# 	function find_in_path()
-# 		if isempty(stack)
-# 			throw("node has no key before $key")
-# 		end
-# 		best = pop(stack)
-# 		while best[1] > key
-# 			best = pop(stack)
-# 		end
-# 		for pair in stack
-# 			if pair[1] <= key && pair[1] > best[1]
-# 				best = pair
-# 			end
-# 		end
-# 		best
-# 	end
-# 	while notempty(node)
-# 		if key < node.key
-# 			push(stack, (node.key, node.value))
-# 			node = node.child[LEFT]
-# 		elseif key > node.key
-# 			push(stack, (node.key, node.value))
-# 			node = node.child[RIGHT]
-# 		else
-# 			if isempty(node.child[LEFT])
-# 				break
-# 			else
-# 				return last(node.child[LEFT])
-# 			end
-# 		end 
-# 	end 
-# 	return find_in_path()
-# end
 
 
-# # backup
-# # before and after could perhaps also be written with rank and select?
-# before{K, V} (node :: Nil{K, V}, key :: K) = throw("before called on Nil{$K, $V}")
-# function before{K, V} (node :: Node{K, V}, key :: K) 
-# 	stack = Array((K, V), 0)
-# 	function find_in_path()
-# 		if isempty(stack)
-# 			throw("node has no key before $key")
-# 		end
-# 		best = pop(stack)
-# 		while best[1] > key
-# 			best = pop(stack)
-# 		end
-# 		for pair in stack
-# 			if pair[1] <= key && pair[1] > best[1]
-# 				best = pair
-# 			end
-# 		end
-# 		best
-# 	end
-# 	while notempty(node)
-# 		if key < node.key
-# 			push(stack, (node.key, node.value))
-# 			node = node.child[LEFT]
-# 		elseif key > node.key
-# 			push(stack, (node.key, node.value))
-# 			node = node.child[RIGHT]
-# 		else
-# 			if isempty(node.child[LEFT])
-# 				break
-# 			else
-# 				return last(node.child[LEFT])
-# 			end
-# 		end 
-# 	end 
-# 	return find_in_path()
-# end
-# 
-
-
-# 
-# before{K, V} (node :: Nil{K, V}, key :: K) = throw("before called on Nil{$K, $V}")
-# function before{K, V} (node :: Node{K, V}, key :: K, cf :: Function) 
-# 	stack = Array((K, V), 0)
-# 	function find_in_path()
-# 		if isempty(stack)
-# 			throw("node has no key before $key")
-# 		end
-# 		best = pop(stack)
-# 		while cf(key, best[KEY])
-# 			best = pop(stack)
-# 		end
-# 		for pair in stack
-# 			if cf(pair[KEY], key) && cf(best[KEY], pair[KEY])
-# 				best = pair
-# 			end
-# 		end
-# 		best
-# 	end
-# 	while notempty(node)
-# 		if cf(key, node.key)
-# 			push(stack, (node.key, node.value))
-# 			node = node.child[LEFT]
-# 		elseif cf(node.key, key)
-# 			push(stack, (node.key, node.value))
-# 			node = node.child[RIGHT]
-# 		else
-# 			if isempty(node.child[LEFT])
-# 				break
-# 			else
-# 				return last(node.child[LEFT])
-# 			end
-# 		end 
-# 	end 
-# 	return find_in_path()
-# end
-# 
-# # before and after could perhaps also be written with rank and select?
-# after{K, V} (node :: Nil{K, V}, key :: K) = throw("after called on Nil{$K, $V}")
-# function after{K, V} (node :: Node{K, V}, key :: K, cf :: Function) 
-# 	stack = Array((K, V), 0)
-# 	function find_in_path()
-# 		if isempty(stack)
-# 			throw("node has no key after $key")
-# 		end
-# 		best = pop(stack)
-# 		while cf(best[KEY], key)
-# 			best = pop(stack)
-# 		end
-# 		for pair in stack
-# 			if cf(key, pair[KEY]) && cf(pair[KEY], best[KEY])
-# 				best = pair
-# 			end
-# 		end
-# 		best
-# 	end
-# 	while notempty(node)
-# 		if cf(node.key, key)
-# 			push(stack, (node.key, node.value))
-# 			node = node.child[RIGHT]
-# 		elseif cf(key, node.key)
-# 			push(stack, (node.key, node.value))
-# 			node = node.child[LEFT]
-# 		else
-# 			if isempty(node.child[RIGHT])
-# 				break
-# 			else
-# 				return first(node.child[RIGHT])
-# 			end
-# 		end 
-# 	end 
-# 	return find_in_path()
-# end
-# 
-
-
-
-
-function select{K, V}(node :: Avl{K, V}, ind :: Int)
+function select{K, V}(node :: Avl{K, V}, ind :: Real)
 	rec(n :: Nil, left :: Int) = throw("select: index $left out of range")
-	function rec(n :: Node, left :: Int)
+	function rec(n :: Node{K, V}, left :: Int)
 		sofar = left + length(n.child[LEFT])
 		if sofar == ind
 			return (n.key, n.value)
@@ -273,13 +106,10 @@ function select{K, V}(node :: Avl{K, V}, ind :: Int)
 	rec(node, 0)
 end
 
-
-
-# rev_rank, rev_select (simple, just select (sd.n - i)
-#rev_rank{K, V}(node :: Avl{K, V}, key ::) = length(node) - rank(node, key)	   
+# if key in node, return rank, else throw key error
 function rank{K, V}(node :: Avl{K, V}, key :: K, cf :: Function)
-	rec(n :: Nil, left :: Int) = left 
-	function rec(n :: Node, left)
+	rec(n :: Nil, left :: Int) = throw(KeyError(key))
+	function rec(n :: Node{K, V}, left :: Int)
 		if cf(key, n.key)
 			return rec(n.child[LEFT], left)
 		elseif cf(n.key, key)
@@ -292,21 +122,9 @@ function rank{K, V}(node :: Avl{K, V}, key :: K, cf :: Function)
 	rec(node, 0)
 end
 
-before{K, V} (node :: Node{K, V}, key :: K, cf :: Function) = select(node, rank(node, key, cf) - 1)
-
-function after{K, V} (node :: Node{K, V}, key :: K, cf :: Function) 
-	tmp = first(node)
-	if cf(key, tmp[KEY])
-		tmp
-	else
-		select(node, rank(node, key, cf) + 1)
-	end
-end
-
-
 # first (node, n) # same as take in haskell
 
-# last (node, b)
+# last (node, n)
 
 first{K, V}(node :: Nil{K, V}) = throw ("first called on empty SortDict{$K, $V}") 
 function first{K, V}(node :: Node{K, V})

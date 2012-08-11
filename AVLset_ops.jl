@@ -4,6 +4,7 @@ require ("AVLbase.jl")
 require ("AVLutil.jl")
 
 
+
 # union of two trees in linear time (n + m)
 function union_linear{K, V} (n1 :: Avl{K, V}, n2 :: Avl{K, V}, cf :: Function)
 	ks = Array(K, 0)
@@ -180,7 +181,7 @@ intersect_nlogn{K, V} (big :: Nil{K, V}, small :: Node{K, V}, cf :: Function) = 
 function intersect_mlogn{K, V} (big :: Avl{K, V}, small :: Avl{K, V}, cf :: Function)
 	ks = K[]
 	vs = V[]
-	for (key, value) in small
+	for (key, value) in Gorightkv(small, first(small)[KEY], cf)
 		if has(big, key, cf)
 			push(ks, key)
 			push(vs, value)
@@ -188,7 +189,6 @@ function intersect_mlogn{K, V} (big :: Avl{K, V}, small :: Avl{K, V}, cf :: Func
 	end
 	build(ks, vs)
 end
-
 
  
 # # After completion, it dawned on me that this isn't linear time

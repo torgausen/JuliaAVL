@@ -21,23 +21,32 @@ end
 turn (f :: Function, x, y, b :: Bool) = apply(f, ((x, y), (y, x)) [b + 1])
 
 
-sshow{K, V}(io, nil :: Nil{K, V}) = "Avl{}"
-function sshow{K, V}(io, node :: Node{K, V})
-	flag = true
-	str = "Avl{("
-	for x in node
-		if flag 
-			str = strcat(str, string(x[KEY]), "=>", string(x[VALUE]), ")")
-			flag = false
-		else
-			str = strcat(str, ", (", string(x[KEY]), "=>", string(x[VALUE]), ")")
-		end
-	end
-	return strcat(str, "}")
-end	
+# sshow{K, V}(io, nil :: Nil{K, V}) = "Avl{}"
+# function sshow{K, V}(io, node :: Node{K, V})
+# 	flag = true
+# 	str = "Avl{("
+# 	for x in node
+# 		if flag 
+# 			str = strcat(str, string(x[KEY]), "=>", string(x[VALUE]), ")")
+# 			flag = false
+# 		else
+# 			str = strcat(str, ", (", string(x[KEY]), "=>", string(x[VALUE]), ")")
+# 		end
+# 	end
+# 	return strcat(str, "}")
+# end	
+# 
+# show{K, V}(x, node :: Avl{K, V}) = println(sshow(stdout_stream, node))
 
-show{K, V}(x, node :: Avl{K, V}) = println(sshow(stdout_stream, node))
-
+map{K, V}(f :: Function, node :: Nil{K, V}) = node
+function map{K, V}(f :: Function, node :: Node{K, V})
+	out = Node(node.key, f(node.value))
+	out.child[LEFT]  = map(f, node.child[LEFT])
+	out.child[RIGHT] = map(f, node.child[RIGHT])
+	out.count = node.count
+	out.bal = node.bal
+	out
+end		
 
 
 
@@ -48,7 +57,7 @@ function build{K, V}(ks :: Vector{K}, vs :: Vector{V})
 		if len <= 0
 			return 0, 0, Nil{K, V}()
 		end
-		mid = fst + ifloor(len / 2) 
+		mid = fst + div(len, 2) 
 		node = Node(ks[mid], vs[mid])
 		hl, cl, node.child[LEFT] = rec(fst, mid - 1)
 		hr, cr, node.child[RIGHT] = rec(mid + 1, lst)
@@ -113,17 +122,17 @@ function valid_count{K, V}(node :: Node{K, V})
 	return ((count == node.count) && true_l && true_r, count)
 end
 
-# is node a sort_dict, that is, do the keys form a set, and are they sorted?
-valid_sort_dict{K, V}(node :: Nil{K, V}, cf :: Function) = true
-function valid_sort_dict{K, V}(node :: Node{K, V}, cf :: Function)
+# is node sorted, that is, do the keys form a set, and are they sorted?
+valid_sort{K, V}(node :: Nil{K, V}, cf :: Function) = true
+function valid_sort{K, V}(node :: Node{K, V}, cf :: Function)
 	prev = first(node)
 	flag = true
-	for kv in node
+	for kv in Gorightkv(node, first(node)[KEY], cf)
 		if flag then
 			flag = false
 			continue # skip first iteration
 		end
-		if ! cf(prev[1], kv[1])
+		if ! cf(prev[KEY], kv[KEY])
 			return false
 		end
 		prev = kv
@@ -190,7 +199,7 @@ function draw(node, show_values, show_counts, screen_cols)
 	
 	text = Array(String, 0)
 	s = repeat(" ", screen_cols)
-	for i = 1:30
+	for i = 1:300
 		push(text, s)
 	end
 
@@ -205,7 +214,7 @@ function draw(node, show_values, show_counts, screen_cols)
 	end
 	println(repeat("-", screen_cols))
 end
-draw(node) = draw(node, false, true, 128)
+draw(node) = draw(node, false, false, 128)
 draw(node, a, b) = draw(node, a, b, 128)
 
 

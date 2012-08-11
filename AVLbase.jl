@@ -38,7 +38,7 @@ function Node{K, V}(key :: K, value :: V)
 	return node
 end
 
-copy{K, V}(node :: Nil{K, V}) = node 
+copy{K, V}(node :: Nil{K, V}) = copy(node) 
 function copy{K, V}(node :: Node{K, V}) 
 	out = Node(node.key, node.value)
 	out.child[LEFT]  = copy(node.child[LEFT])
@@ -47,6 +47,17 @@ function copy{K, V}(node :: Node{K, V})
 	out.bal = node.bal
 	out
 end
+
+deeper_copy{K, V}(node :: Nil{K, V}) = copy(node) 
+function deeper_copy{K, V}(node :: Node{K, V}) 
+	out = Node(copy(node.key), copy(node.value))
+	out.child[LEFT]  = deeper_copy(node.child[LEFT])
+	out.child[RIGHT] = deeper_copy(node.child[RIGHT])
+	out.count = node.count
+	out.bal = node.bal
+	out
+end
+
 
 isempty (node :: Avl) = isa(node, Nil)
 notempty (node :: Avl) = isa(node, Node)
@@ -80,7 +91,6 @@ function =={K,V}(a :: Node{K,V}, b :: Node{K,V})
 	# no need to bother with validity here
 end
 
-
 has{K}(node :: Nil, key :: K, cf :: Function) = false
 function has{K, V}(node :: Node{K, V}, key :: K, cf :: Function)
 	if cf(key, node.key)
@@ -92,14 +102,14 @@ function has{K, V}(node :: Node{K, V}, key :: K, cf :: Function)
 	end
 end
 
-get{K, V} (node :: Nil{K, V}, key :: K, cf :: Function) = throw(KeyError(key))
-function get{K, V}(node :: Node{K, V}, key :: K, cf :: Function)
+get{K, V} (node :: Nil{K, V}, key :: K, default :: V, cf :: Function) = default
+function get{K, V}(node :: Node{K, V}, key :: K, default :: V, cf :: Function)
 	if cf(key, node.key)
-		get(node.child[LEFT], key, cf)
+		get(node.child[LEFT], key, default, cf)
 	elseif cf(node.key, key)
-		get(node.child[RIGHT], key, cf)
+		get(node.child[RIGHT], key, default, cf)
 	else
-		return (node.key, node.value)
+		return node.value
 	end
 end
 
@@ -117,266 +127,22 @@ end
 range{K,V}(node :: Nil{K, V}, fst :: K, lst :: K, cf :: Function) = Array((K, V), 0)
 function range{K, V}(node :: Node{K, V}, fst :: K, lst :: K, cf :: Function)
 	out = Array((K, V), 0)
-	rec(n :: Nil{K, V}) = nothing
+	rec(n :: Nil{K, V}) = return 
 	function rec(n :: Node{K, V})
 		if cf(lst, n.key)
 			rec(n.child[LEFT])
 		elseif cf(n.key, fst)
-			rec(n.child[RIGHT])
+			rec(n.child[RIGHT])sd
 		else
 			rec(n.child[LEFT])
 			push(out, (n.key, n.value))
 			rec(n.child[RIGHT])
 		end
-		nothing
 	end
 	rec(node) 
 	out 
 end
 
-# # only for multi-dicts
-#
-# insert{K, V}(node :: Nil{K, V}, key :: K, value :: V) = (true, Node(key, value))
-# function insert{K, V}(node :: Node{K, V}, key :: K, value :: V)
-# 	# will later use user supplied function with isless as default 
-# 
-# 	# side and edis are opposites, where LEFT = 1 and right = 2
-# 	# so if side = 2 , edis = 1 and vice versa
-# 	
-# 	side = (key > node.key) + 1
-# 	longer, node.child[side] = insert(node.child[side], key, value)
-# 	
-# 	edis = UNISIDE - side 
-# 	if longer
-# 		if node.bal == edis 
-# 			node.bal = BALANCED
-# 			longer = false
-# 		elseif node.bal == BALANCED 
-# 			node.bal = side
-# 		else  
-# 			longer, node = rotate(node, side)
-# 		end
-# 	end
-# 	return (longer, node)
-# end
-
-assign{K, V}(node :: Nil{K, V}, key :: K, value :: V, cf :: Function) = (true, 1, Node(key, value))
-function assign{K, V}(node :: Node{K, V}, key :: K, value :: V, cf :: Function)
-	if cf(key, node.key)
-		side = LEFT
-	elseif cf(node.key, key)
-		side = RIGHT
-	else
-		node.value = value
-		return (false, 0, node)
-	end
-	edis = UNISIDE - side 
-	longer, increment, node.child[side] = assign(node.child[side], key, value, cf)
-	node.count += increment
-	if longer
-		if node.bal == edis 
-			node.bal = BALANCED
-			longer = false
-		elseif node.bal == BALANCED 
-			node.bal = side
-		else  
-			longer, node = rotate(node, side)
-		end
-	end
-	return (longer, increment, node)
-end
-
-# assume t1 and t2 not empty
-# also assume all keys in t1 < m < all keys in t2, where < is cf
-
-# takes a function of two arguments and a Bool returns the function with arguments swapped when
-# bool is true. Example isgreater = turn(isless, true).
-turn (f :: Function, b :: Bool) = (x, y) -> apply(f, ((x, y),(y, x))[b + 1])
-
-# same, but always turns the function.
-turn (f :: Function) = (x, y) -> apply(f, (y, x))
-
-
-# this function is destructive to t1. Need not be of course.
-# assume max(t1) less than m less than min(t2)
-function tjoin{K, V}(t1 :: Node{K, V}, m :: (K, V), t2 :: Avl{K, V})
-	function rec(p, h) 
-		#println("h = $h"); draw(p)
-		if h <= h2 + 1
-			n = Node(m[KEY], m[VALUE])
-			# println( h2, h)
-			# println("h: $h, h2: $(h2)")
-			
-			if side == RIGHT
-				n.bal = bal_conv(h2 - h)
-			elseif side == LEFT
-				n.bal = bal_conv(h - h2)
-			else
-				println("???")
-				exit(1)
-			end
-			
-			n.child[edis] = p
-			n.child[side] = t2
-			n.count = length(p) + length(t2) + 1
-			
-			#println("After construction") ; draw(n)
-
-			return(true, n) # longer, increment, node
-		end
-		longer, p.child[side] = rec(p.child[side], h - 1 - (p.bal == edis)) 
-		p.count = length(p.child[LEFT]) + length(p.child[RIGHT]) + 1
-		if longer
-			if p.bal == edis 
-				p.bal = BALANCED
-				longer = false
-			elseif p.bal == BALANCED 
-				p.bal = side
-			else  
-				longer, p = rotate(p, side)
-			end
-		end
-
-		return (longer, p)
-	end
-		
-	side = RIGHT 
-	h1 = height(t1)
-	h2 = height(t2)
-	if h2 > h1
-		# make sure h1 >= h2
-		t1, t2 = t2, t1
-		h1, h2 = h2, h1
-		side = LEFT
-	end
-	edis = UNISIDE - side
-	longer, node = rec(t1, h1) 
-	node
-end
-
-# load("AVLutil.jl")
-# function runme()
-# 	while true
-# 		n = int(rand() * 45) + 1
-# 		m = int(rand() * 45) + 1
-# 		an = [1:n]
-# 		am = 100 - reverse([1:m])
-# 		mid = (50, 50)
-# 	
-# 		
-# 		t1 = build(an, an)
-# 		t2 = build(am, am)
-# # 		println("--- NEW TRIAL ---  (mid = $n)")
-# # 		println("t1 = ")
-# # 		draw(t1)
-# # 		println("t2 = ")
-# # 		draw(t2)
-# # 		println("h1 = $(height(t1)), h2 = $(height(t2)). Begin descent: ")
-# # 		
-# 		t3 = tjoin(t1, mid, t2)
-# 		println("result:")
-# 		draw(t3)
-# 		if !(valid_avl(t3)[1]) 
-# 			println("NOT AVL STRUCTURE!")
-# 			break
-# 		elseif !(valid_count(t3)[1]) 
-# 			println("WRONG COUNT!")
-# 			draw(t3, false, true)
-# 			break
-# 		end
-# 	#	assert(valid_avl(t3), (n, m))
-# 	end
-# end
-#runme()
-
-# assumes node not empty
-function del_ultra{K, V}(node :: Node{K, V}, b :: Bool)
-	side  = b + 1
-	edis = UNISIDE - side
-	if isempty(node.child[side])  # at the bottom yet?
-		return (true, 1, (node.key, node.value), node.child[edis])
-	end
- 
-	shorter, decrement, ret_val, node.child[side] = del_ultra(node.child[side], b)
-	node.count -= decrement
-	
-	if shorter == false
-		return (false, decrement, ret_val, node)
-	end
-	
-	if node.bal == side 
-		node.bal = BALANCED
-	elseif node.bal == BALANCED 
-		node.bal = edis
-		shorter = false
-	else node.bal == edis
-		longer, node = rotate(node, edis)
-		shorter = !longer
-	end
-	return (shorter, decrement, ret_val, node) 
-end
-
-del_last{K, V}(node :: Avl{K, V}) = del_ultra(node, true)
-del_first{K, V}(node :: Avl{K, V}) = del_ultra(node, false)
-
-# Handles the case of actually deleting a node when it's found
-function del_helper{K, V} (node :: Avl{K, V})
-	if isempty(node.child[LEFT]) 
-		return (true, 1, (node.key, node.value), node.child[RIGHT])
-	elseif isempty(node.child[RIGHT]) 
-		return (true, 1, (node.key, node.value), node.child[LEFT])
-	end 
-	
-	shorter, decrement, ret_val, node.child[RIGHT] = del_first(node.child[RIGHT])
-	node.count -= decrement
-	ret_val, node.key, node.value = (node.key, node.value), ret_val[KEY], ret_val[VALUE] 
-	if shorter 
-		if node.bal == RIGHT 
-			node.bal = BALANCED
-		elseif node.bal == BALANCED 
-			node.bal = LEFT
-			shorter = false
-		elseif node.bal == LEFT 
-			longer, node = rotate (node, LEFT)
-			shorter = !longer
-		end
-	end
-	
- 	return (shorter, decrement, ret_val, node)
-end
-
-
-# Consider rotating to the bottom instead, perhaps more cache efficient?
-del{K, V}(node :: Nil{K, V}, key :: K, cf :: Function) = throw (KeyError(key))
-function del{K, V}(node :: Avl{K, V}, key :: K, cf :: Function)
-	side = key < node.key
-	if side == false
-		if key > node.key
-			side = RIGHT
-		else
-			return del_helper(node)
-		end
-	end
-	edis = UNISIDE - side 
-
-	shorter, decrement, ret_val, node.child[side] = del(node.child[side], key, cf)
-	node.count -= decrement
-	if shorter == false 
-		return (false, decrement, ret_val, node)
-	end
- 
-	if node.bal == side 
-		node.bal = BALANCED
-	elseif node.bal == BALANCED 
-		node.bal = edis
-		shorter = false 
-	elseif node.bal == edis 
-		longer, node = rotate(node, edis)
-		shorter = !longer 
-	end
-	
-	return (shorter, decrement, ret_val, node)
-end
 
 function rotate(node, side)
 	edis = UNISIDE - side
@@ -462,6 +228,283 @@ function rotate(node, side)
 	
 	return (false, node)
 end
+
+
+
+assign{K, V}(node :: Nil{K, V}, key :: K, value :: V, cf :: Function) = (true, 1, Node(key, value))
+function assign{K, V}(node :: Node{K, V}, key :: K, value :: V, cf :: Function)
+	if cf(key, node.key)
+		side = LEFT
+	elseif cf(node.key, key)
+		side = RIGHT
+	else
+		node.value = value
+		return (false, 0, node)
+	end
+	edis = UNISIDE - side 
+	longer, increment, node.child[side] = assign(node.child[side], key, value, cf)
+	node.count += increment
+	if longer
+		if node.bal == edis 
+			node.bal = BALANCED
+			longer = false
+		elseif node.bal == BALANCED 
+			node.bal = side
+		else  
+			longer, node = rotate(node, side)
+		end
+	end
+	return (longer, increment, node)
+end
+
+
+# takes a function of two arguments and a Bool returns the function with arguments swapped when
+# bool is true. Example isgreater = turn(isless, true).
+turn (f :: Function, b :: Bool) = (x, y) -> apply(f, ((x, y),(y, x))[b + 1])
+
+# same, but always turns the function.
+turn (f :: Function) = (x, y) -> apply(f, (y, x))
+
+
+
+#load("AVLutil.jl")
+
+# may be destructive to either tree
+function tjoin{K, V}(t1 :: Avl{K, V}, m :: (K, V), t2 :: Avl{K, V})
+	function rec(p, h) 
+		if h <= h2 + 1
+			n = Node(m[KEY], m[VALUE])
+			if side == RIGHT
+				n.bal = bal_conv(h2 - h)
+			else
+				n.bal = bal_conv(h - h2)
+			end
+			n.child[edis] = p
+			n.child[side] = t2
+			n.count = length(p) + length(t2) + 1
+			return(true, n) 
+		end
+		longer, p.child[side] = rec(p.child[side], h - 1 - (p.bal == edis)) 
+		p.count = length(p.child[LEFT]) + length(p.child[RIGHT]) + 1
+		if longer
+			if p.bal == edis 
+				p.bal = BALANCED
+				longer = false
+			elseif p.bal == BALANCED 
+				p.bal = side
+			else  
+				longer, p = rotate(p, side)
+			end
+		end
+
+		return (longer, p)
+	end
+		
+	side = RIGHT 
+	h1 = height(t1)
+	h2 = height(t2)
+	if h2 > h1
+		# make sure h1 >= h2
+		t1, t2 = t2, t1
+		h1, h2 = h2, h1
+		side = LEFT
+	end
+	edis = UNISIDE - side
+	longer, node = rec(t1, h1) 
+	node
+end
+
+notempty {T} (a :: Array{T, 1}) = length(a) > 0
+
+
+
+tsplit{K, V}(node :: Nil{K, V}, key :: K, cf :: Function) = nil(K, V), nil(K, V), nothing
+function tsplit{K, V}(node :: Node{K, V}, key :: K, cf :: Function)
+	lts = Array(Node{K,V}, 0) 
+	gts = Array(Node{K,V}, 0)
+	theK = 777
+	t1 = nil(K, V)
+	t2 = nil(K, V)
+	while notempty(node)
+		if cf(key, node.key)
+			push(gts, node)
+			node = node.child[LEFT]
+		elseif cf(node.key, key)
+			push(lts, node)
+			node = node.child[RIGHT]
+		else
+			t1 = node.child[LEFT]
+			t2 = node.child[RIGHT]
+			theK = (node.key, node.value)
+			break
+		end
+	end
+	while notempty(lts)
+		left = pop(lts)
+		t1 = tjoin(left.child[LEFT], (left.key, left.value), t1)
+	end
+	while notempty(gts)
+		right = pop(gts)
+		t2 = tjoin(t2, (right.key, right.value), right.child[RIGHT])
+	end
+	return t1, t2, theK
+end
+
+function test_split()
+	i = 0
+	while true
+		i += 1
+		print(i, " ")
+		flush(stdout_stream)
+		n = ifloor(rand() * 100000)
+		k = ifloor(rand() * (n-1)) + 1
+		t = build([1:n], [1:n])
+		t1, t2, theK = tsplit(t, k, isless)
+		
+		#draw(t1)
+		#println(k)
+		#draw(t2)
+		assert(valid_avl(t1)[1], "t1 not valid")
+		assert(valid_avl(t2)[1], "t2 not valid")
+		
+		assert(valid_count(t1)[1], "t1 count not valid")
+		assert(valid_count(t2)[1], "t2 count not valid")
+		if isa(theK, Nothing) 
+			assert(length(t1) + length(t2) == n, "count error")
+		else
+			assert(length(t1) + length(t2) + 1 == n, "count error")
+		end
+		assert(valid_sort(t1, isless), "t1 sort not valid")
+		assert(valid_sort(t2, isless), "t2 sort not valid")
+	end
+end
+#test_split()
+
+
+
+# load("AVLutil.jl")
+# function runme()
+# 	while true
+# 		n = int(rand() * 45) + 1
+# 		m = int(rand() * 45) + 1
+# 		an = [1:n]
+# 		am = 100 - reverse([1:m])
+# 		mid = (50, 50)
+# 	
+# 		
+# 		t1 = build(an, an)
+# 		t2 = build(am, am)
+# # 		println("--- NEW TRIAL ---  (mid = $n)")
+# # 		println("t1 = ")
+# # 		draw(t1)
+# # 		println("t2 = ")
+# # 		draw(t2)
+# # 		println("h1 = $(height(t1)), h2 = $(height(t2)). Begin descent: ")
+# # 		
+# 		t3 = tjoin(t1, mid, t2)
+# 		println("result:")
+# 		draw(t3)
+# 		if !(valid_avl(t3)[1]) 
+# 			println("NOT AVL STRUCTURE!")
+# 			break
+# 		elseif !(valid_count(t3)[1]) 
+# 			println("WRONG COUNT!")
+# 			draw(t3, false, true)
+# 			break
+# 		end
+# 	#	assert(valid_avl(t3), (n, m))
+# 	end
+# end
+#runme()
+
+# del first or last, according to b. Assumes node not empty
+function del_ultra{K, V}(node :: Node{K, V}, b :: Bool)
+	side  = b + 1
+	edis = UNISIDE - side
+	if isempty(node.child[side])  # at the bottom yet?
+		return (true, 1, (node.key, node.value), node.child[edis])
+	end
+ 
+	shorter, decrement, ret_val, node.child[side] = del_ultra(node.child[side], b)
+	node.count -= decrement
+	
+	if shorter == false
+		return (false, decrement, ret_val, node)
+	end
+	
+	if node.bal == side 
+		node.bal = BALANCED
+	elseif node.bal == BALANCED 
+		node.bal = edis
+		shorter = false
+	else node.bal == edis
+		longer, node = rotate(node, edis)
+		shorter = !longer
+	end
+	return (shorter, decrement, ret_val, node) 
+end
+
+del_last{K, V}(node :: Avl{K, V}) = del_ultra(node, true)
+del_first{K, V}(node :: Avl{K, V}) = del_ultra(node, false) # might perhaps want special verison of this for del... dunno
+
+function del_helper{K, V} (node :: Avl{K, V})
+	if isempty(node.child[LEFT]) 
+		return (true, 1, (node.key, node.value), node.child[RIGHT])
+	elseif isempty(node.child[RIGHT]) 
+		return (true, 1, (node.key, node.value), node.child[LEFT])
+	end 
+	
+	shorter, decrement, ret_val, node.child[RIGHT] = del_first(node.child[RIGHT])
+	node.count -= decrement
+	ret_val, node.key, node.value = (node.key, node.value), ret_val[KEY], ret_val[VALUE] 
+	if shorter 
+		if node.bal == RIGHT 
+			node.bal = BALANCED
+		elseif node.bal == BALANCED 
+			node.bal = LEFT
+			shorter = false
+		elseif node.bal == LEFT 
+			longer, node = rotate (node, LEFT)
+			shorter = !longer
+		end
+	end
+	
+ 	return (shorter, decrement, ret_val, node)
+end
+
+
+# Consider rotating to the bottom instead, perhaps more cache efficient?
+del{K, V}(node :: Nil{K, V}, key :: K, cf :: Function) = throw (KeyError(key))
+function del{K, V}(node :: Avl{K, V}, key :: K, cf :: Function)
+	side = key < node.key
+	if side != LEFT 
+		if key > node.key
+			side = RIGHT
+		else
+			return del_helper(node)
+		end
+	end
+	edis = UNISIDE - side 
+
+	shorter, decrement, ret_val, node.child[side] = del(node.child[side], key, cf)
+	node.count -= decrement
+	if shorter == false 
+		return (false, decrement, ret_val, node)
+	end
+ 
+	if node.bal == side 
+		node.bal = BALANCED
+	elseif node.bal == BALANCED 
+		node.bal = edis
+		shorter = false 
+	elseif node.bal == edis 
+		longer, node = rotate(node, edis)
+		shorter = !longer 
+	end
+	
+	return (shorter, decrement, ret_val, node)
+end
+
 
 
 

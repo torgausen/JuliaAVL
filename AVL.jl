@@ -3,9 +3,9 @@
 # work out system of exceptions
 # more sanity tests, add performance tests to find good values for algorithm choice
 # set difference, symmetric difference
-# refs with range and vector?
-# improve union to use intelligent split + merge intersection + join. 
-# more constructors! Harder than it should be. 
+# refs with range and vector? problematic: semantic mix of keys and indexes
+# improve union to use intelligent destructive split! -> merge intersection -> join!. 
+# more constructors... Harder than it should be!
 # floor, ceil (to work on ranks, not keys), (but one can just use select and before/after)
 # * isless(x, y)
 # ? convert(type, x)
@@ -15,22 +15,25 @@
 # ? reverse. possible but clumsy
 # ? Memory-mapped I/O ?
 # ? Parallel/Distributed trees?
-
+# constructor that sorts?
 
 #module AVL
-	
+
 #import Base.*
-		
+
 require("AVLbase.jl")
 require("AVLutil.jl")
 require("AVLset_ops.jl") 
 
-#export SortDict
-#export isempty, length, show
-#export assign, has, get, shift, pop, del
+
+#export SortDict, copy, deeper_copy, isequal, keys, values
+#export isempty, length, numel, show
+#export assign, has, get, shift, pop, del, del_all, del_any
 #export first, last, before, after, rank, select
 #export valid
-#export union, intersect#, join, split
+#export union, intersect, difference, join!, split!
+#export Goright, Gorightkv, Goleft, Goleftkv
+
 
 abstract Associative{K, V}
 
@@ -243,7 +246,7 @@ function values{K, V}(sd :: SortDict{K, V})
 	vs
 end
 
-function split{K, V} (sd :: SortDict{K, V}, key :: K) 
+function split!{K, V} (sd :: SortDict{K, V}, key :: K) 
 	t1, t2, mid = tsplit(sd.tree, key, sd.cf)
 	if mid != nothing
 		# what to do with that extra element? I'll just insert it in t2 for now
@@ -255,7 +258,7 @@ end
 
 # all of sd1's keys must be less than all of sd2's keys
 # note: destructive to the tree with the 'highest' values (when using isless as compare function)
-function join{K, V} (sd1 :: SortDict{K, V}, sd2 :: SortDict{K, V}) 
+function join!{K, V} (sd1 :: SortDict{K, V}, sd2 :: SortDict{K, V}) 
 	cf = sd1.cf
 	if cf != sd2.cf
 		throw ("SortDicts to be joined must have the same compare functions")
@@ -297,14 +300,6 @@ end
 function ref{K, V} (sd :: SortDict{K, V}, ind :: Range1{K}) 
 	range(sd.tree, first(ind), last(ind), sd.cf)
 end 
-
-# function ref{K, V} (sd :: SortDict{K, V}, ind :: Range{K}) 
-# 	println(ind)
-# 	#range(sd.tree, first(ind), last(ind), sd.cf)
-# end 
-
-# ref{K, V} (sd :: SortDict, ind :: Vector{K}) 
-
 
 function assign{K, V}(sd :: SortDict{K, V}, value :: V, key :: K) 
 	h, c, sd.tree = assign(sd.tree, key, value, sd.cf)
@@ -360,26 +355,26 @@ after{K, V} (sd :: SortDict{K, V}, key :: K) = after(sd.tree, key, sd.cf)
 const UNION_RATIO = 1.0
 function union {K, V} (sd1 :: SortDict{K, V}, sd2 :: SortDict{K, V})
 	if sd1.cf != sd2.cf 
-		throw ("AVL union: no union with non-identical compare functions")
+		throw ("union: non-identical compare functions")
 	end
 	if length(sd1) < length(sd2)
 		sd1, sd2 = sd2, sd1
 	end
 	n = length(sd1)
 	m = length(sd2)
-	if UNION_RATIO * n < m * log2(n)
+#	if UNION_RATIO * n < m * log2(n)
 #		println("union linear")
 		SortDict(union_linear(sd1.tree, sd2.tree, sd1.cf), sd1.cf)
-	else
+#	else
 #		println("union mlogn")
-		SortDict(union_mlogn(sd1.tree, sd2.tree, sd1.cf), sd1.cf)
-	end
+#		SortDict(union_mlogn(sd1.tree, sd2.tree, sd1.cf), sd1.cf)
+#	end
 end
  
 const INTERSECT_RATIO = 1.0
 function intersect {K, V} (sd1 :: SortDict{K, V}, sd2 :: SortDict{K, V}) 
 	if sd1.cf != sd2.cf 
-		throw ("AVL union: intersect with non-identical compare functions")
+		throw ("intersect: non-identical compare functions")
 	end
 	if length(sd1) < length(sd2)
 		sd1, sd2 = sd2, sd1
@@ -392,12 +387,31 @@ function intersect {K, V} (sd1 :: SortDict{K, V}, sd2 :: SortDict{K, V})
 #		println("intersect linear")
 		SortDict(intersect_linear(sd1.tree, sd2.tree, sd1.cf), sd1.cf)
 	else
-#		println("intersect mlogn")
+# 		println("intersect mlogn")
 		SortDict(intersect_mlogn(sd1.tree, sd2.tree, sd1.cf), sd1.cf)
 	end
 end
 
 
+function difference {K, V} (sd1 :: SortDict{K, V}, sd2 :: SortDict{K, V}) 
+	if sd1.cf != sd2.cf 
+		throw ("difference: non-identical compare functions")
+	end
+	if length(sd1) < length(sd2)
+		sd1, sd2 = sd2, sd1
+	end
+	
+	n = length(sd1)
+	m = length(sd2)
+
+	if INTERSECT_RATIO * n < m * log2(n)
+		println("intersect linear")
+		SortDict(intersect_linear(sd1.tree, sd2.tree, sd1.cf), sd1.cf)
+	else
+ 		println("intersect mlogn")
+		SortDict(intersect_mlogn(sd1.tree, sd2.tree, sd1.cf), sd1.cf)
+	end
+end
 
 
 #end # module
@@ -430,12 +444,12 @@ function run_tests()	# very basic sanity tests
 	b = [11 : 22] 
 	sd1 = SortDict(a, 1/a)
 	sd2 = SortDict(b, 1/b)
-	sd = join(sd1, sd2)
+	sd = join!(sd1, sd2)
 	assert(keys(sd) == [-10:22], "join broken")
-	sd1, sd2 = split(sd, -6)
+	sd1, sd2 = split!(sd, -6)
 	
-	assert(keys(sd1) == [-10:-7], "split, broken")
-	assert(keys(sd2) == [-6:22], "split, broken")
+	assert(keys(sd1) == [-10:-7], "split!, broken")
+	assert(keys(sd2) == [-6:22], "split!, broken")
 	
 	sd = SortDict(['a', 'd', 'e'], [1:3]) 
 	assert(valid(sd), "SortDict constructor broken")

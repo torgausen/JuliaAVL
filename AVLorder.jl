@@ -17,9 +17,9 @@ function ref{K, V}(node :: Node{K, V}, rng :: Range1{K})
 	out = Array((K, V), 0)
 	range(n :: Nil{K, V}) = Array((K, V), 0)
 	function range(n :: Node{K, V})
-		if lst < n.key
+		if cf(lst, n.key)
 			range(n.child[LEFT])
-		elseif fst > n.key
+		elseif cf(n.key, fst)
 			range(n.child[RIGHT])
 		else
 			range(n.child[LEFT])
@@ -122,10 +122,6 @@ function rank{K, V}(node :: Avl{K, V}, key :: K, cf :: Function)
 	rec(node, 0)
 end
 
-# first (node, n) # same as take in haskell
-
-# last (node, n)
-
 first{K, V}(node :: Nil{K, V}) = throw ("first called on empty SortDict{$K, $V}") 
 function first{K, V}(node :: Node{K, V})
 	while notempty(node.child[LEFT]) 
@@ -141,16 +137,6 @@ function last{K, V}(node :: Node{K, V})
 	end
 	(node.key, node.value)
 end
-
-ultra{K, V}(node :: Nil{K, V}, side :: Bool) = throw ("ultra called on empty SortDict{$K, $V}") 
-function ultra{K, V}(node :: Node{K, V}, side :: Bool)
-	side += 1
-	while notempty(node.child[side]) 
-		node = node.child[side]
-	end
-	(node.key, node.value)
-end
-
 
 # deletes either first or last element accodring to variable side, which should be LEFT or RIGHT
 function del_ultra{K, V}(node :: Avl{K, V}, side :: Bool)
@@ -179,20 +165,3 @@ function del_ultra{K, V}(node :: Avl{K, V}, side :: Bool)
 	return (shorter, decrement, ret_val, node) 
 end
 
-function test_rank()
-	t = nil(Int,Float64)
-	for i in 5:30
-		if i != 15
-			f, c, t = assign(t, i, rand(), isless)
-		end
-	end
-	draw(t, false, true, 128)
-
-	println(rank(t, 8))
-	println(rank(t, 18))
-	println(rank(t, 1))
-	println(rank(t, 344))
-	println(rank(t, -1210))
-	println(rank(t, 15))
-	println(rank(t, 16))
-end

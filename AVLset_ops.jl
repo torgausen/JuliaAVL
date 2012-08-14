@@ -2,183 +2,81 @@
 
 require ("AVLbase.jl")
 require ("AVLutil.jl")
-
-
-
+ 
 # union of two trees in linear time (n + m)
 function union_linear{K, V} (n1 :: Avl{K, V}, n2 :: Avl{K, V}, cf :: Function)
-	ks = Array(K, 0)
-	vs = Array(V, 0)
-	
-	s1 = Array(Avl{K, V}, 0)
-	s2 = Array(Avl{K, V}, 0)
-	
-	push(s1, nil(K, V))
-	push(s2, nil(K, V))
-	
-	# establish a guard
-	first1 = first(n1)
-	first2 = first(n2)
-	if cf(first1[KEY], first2[KEY])
-		push(ks, first1[KEY])
-		push(vs, first1[VALUE])
-	else
-		push(ks, first2[KEY])
-		push(vs, first2[VALUE])
-	end
-	
-	while notempty(n1) && notempty(n2)
-		# get leftmost position for both trees
-		while notempty(n1.child[LEFT])
-			s_node = Node(n1.key, n1.value) # non destructive
-			s_node.child[RIGHT] = n1.child[RIGHT]
-			push(s1, s_node)
-			n1 = n1.child[LEFT]
-		end 
-		while notempty(n2.child[LEFT])
-			s_node = Node(n2.key, n2.value)
-			s_node.child[RIGHT] = n2.child[RIGHT]
-			push(s2, s_node)
-			n2 = n2.child[LEFT]
-		end
-		
-		if cf(n1.key, n2.key)
-			if cf(last(ks), n1.key)
-				push(ks, n1.key)
-				push(vs, n1.value)
-			end
-			n1 = n1.child[RIGHT]
-			if isempty(n1)   
-				n1 = pop(s1)   
-			end
-		else cf(n2.key, n1.key) # elseif ... need combination function here
-			if cf(last(ks), n2.key)
-				push(ks, n2.key)
-				push(vs, n2.value)
-			end
-			n2 = n2.child[RIGHT]
-			if isempty(n2)   
-				n2 = pop(s2)   
-			end
-		end	
-	end 
-	
-	if isempty(n1)
-		node = n2
-		stack = s2
-	else
-		node = n1
-		stack = s1
-	end
-	
-	while notempty(node)
-		while notempty(node)
-			if notempty(node.child[LEFT])
-				s_node = Node(node.key, node.value)
-				s_node.child[RIGHT] = node.child[RIGHT]
-				push(stack, s_node)
-				node = node.child[LEFT]
-			else 
-				if cf(last(ks), node.key)
-					push(ks, node.key)
-					push(vs, node.value)
-				end
-				node = node.child[RIGHT]
-
-			end
-		end 
-		node = pop(stack)
-	end 
-	return build(ks, vs)
-end
-
-
-
-# non-destructive union of two trees in m log n time
-
-union_mlogn{K, V} (big :: Nil{K, V}, small :: Nil{K, V}, cf :: Function) = big
-union_mlogn{K, V} (big :: Node{K, V}, small :: Nil{K, V}, cf :: Function) = big
-union_mlogn{K, V} (big :: Nil{K, V}, small :: Node{K, V}, cf :: Function) = small
-function union_mlogn{K, V} (big :: Avl{K, V}, small :: Avl{K, V}, cf :: Function)
-	stack = Array(Avl{K, V}, 0)
-	push(stack, nil(K, V))
-	tree = copy(big)
-	while notempty(small)
-		while notempty(small)
-			if notempty(small.child[LEFT])
-				s_node = Node(small.key, small.value)
-				s_node.child[RIGHT] = small.child[RIGHT]
-				push(stack, s_node)
-				small = small.child[LEFT]
-			else 
-				assign(tree, small.key, small.value, cf)
-				small = small.child[RIGHT]
-			end
-		end 
-		small = pop(stack)
-	end 
-	tree
-end
-
-
-
-# wait a minute... there must be a better way to do this?
-function intersect_linear{K, V}(n1 :: Avl{K, V}, n2 :: Avl{K, V}, cf :: Function)
-
-	ks = Array(K, 0)
-	vs = Array(V, 0)
-	
-	s1 = Array(Avl{K, V}, 0)
-	s2 = Array(Avl{K, V}, 0)
-	
-	push(s1, nil(K, V))
-	push(s2, nil(K, V))
-	
-	while notempty(n1) && notempty(n2)
-		while notempty(n1.child[LEFT])
-			s_node = Node(n1.key, n1.value)
-			s_node.child[RIGHT] = n1.child[RIGHT]
-			push(s1, s_node)
-			n1 = n1.child[LEFT]
-		end 
-		while notempty(n2.child[LEFT])
-			s_node = Node(n2.key, n2.value)
-			s_node.child[RIGHT] = n2.child[RIGHT]
-			push(s2, s_node)
-			n2 = n2.child[LEFT]
-		end
-		
-		if cf(n1.key, n2.key)
-			n1 = n1.child[RIGHT]
-			if isempty(n1)   
-				n1 = pop(s1)   
-			end
-		elseif cf(n2.key, n1.key)
-			n2 = n2.child[RIGHT]
-			if isempty(n2)   
-				n2 = pop(s2)   
-			end
+	la = length(n1)
+	lb = length(n2)
+	lc = la + lb
+	a, av = flatten(n1)
+	b, bv = flatten(n2)
+	c, cv = Array(K, lc), Array(V, lc) # A bit painful to allocate all these arrays...
+	i = 1
+	j = 1
+	k = 0
+	while i <= la && j <= lb 
+		if a[i] < b[j] 
+			k += 1
+			c[k] = a[i]
+			cv[k] = av[i]
+			i += 1
+		elseif b[j] < a[i]
+			k += 1
+			c[k] = b[j]
+			cv[k] = bv[j]
+			j += 1
 		else
-			push(ks, n1.key)
-			push(vs, n1.value)
-			
-			n1 = n1.child[RIGHT]
-			if isempty(n1)   
-				n1 = pop(s1)   
-			end
-			n2 = n2.child[RIGHT]
-			if isempty(n2)   
-				n2 = pop(s2)   
-			end
-		end	
-	end 
-	return build(ks,vs)
+			k += 1
+			c[k] = b[j]	# overwrite from second tree
+			cv[k] = bv[j]
+			i += 1
+			j += 1
+		end
+	end
+	while i <= la 
+		k += 1
+		c[k] = a[i]
+		cv[k] = av[i]
+		i += 1
+	end
+	while j <= lb 
+		k += 1
+		c[k] = b[j]
+		cv[k] = bv[j]
+		j += 1
+	end
+	build(c[1 : k], cv[1 : k])
 end
+
+
+function intersect_linear{K, V}(n1 :: Node{K, V}, n2 :: Node{K, V}, cf :: Function)
+	a, av = flatten(n1)
+	b, bv = flatten(n2)
+	i = 1
+	j = 1
+	dst = 0
+	while i <= length(a) && j <= length(b) 
+		if a[i] < b[j] 
+			i += 1
+		elseif b[j] < a[i]
+			j += 1
+		else
+			dst += 1
+			a[dst] = a[i]
+			av[dst] = av[i]
+			i += 1
+			j += 1
+		end
+	end
+	build(a[1 : dst], av[1 : dst])
+end
+
+
 
 intersect_nlogn{K, V} (big :: Nil{K, V}, small :: Nil{K, V}, cf :: Function) = big
 intersect_nlogn{K, V} (big :: Node{K, V}, small :: Nil{K, V}, cf :: Function) = small
 intersect_nlogn{K, V} (big :: Nil{K, V}, small :: Node{K, V}, cf :: Function) = big
-function intersect_mlogn{K, V} (big :: Avl{K, V}, small :: Avl{K, V}, cf :: Function)
+function intersect_mlogn{K, V} (big :: Node{K, V}, small :: Node{K, V}, cf :: Function)
 	ks = K[]
 	vs = V[]
 	for (key, value) in Gorightkv(small, first(small)[KEY], cf)
@@ -189,30 +87,68 @@ function intersect_mlogn{K, V} (big :: Avl{K, V}, small :: Avl{K, V}, cf :: Func
 	end
 	build(ks, vs)
 end
+ 
+# destroys t1
+# called if small t2 (m)
+function diff_mlogn!{K, V} (t1 :: Node{K, V}, t2 :: Node{K, V}, cf :: Function)
+	rec{K, V}(node :: Nil{K, V}) = return
+	function rec{K, V}(node :: Node{K, V})
+		println(node.key)
+		f, c, rv, t1 = del_any(t1, node.key, cf)
+		rec(node.child[LEFT])
+		rec(node.child[RIGHT])
+	end
+	t2 = copy(t2)
+	rec(t2)
+	t1
+end
 
- 
-# # After completion, it dawned on me that this isn't linear time
-# # I'll keep it here for a while just in case 
-# function intersect{K, V} (n1 :: Avl{K, V}, n2 :: Avl{K, V})
-# 	cut{K, V}(n1 :: Nil{K, V}, n2 :: Nil{K, V}) = n1
-# 	cut{K, V}(n1 :: Node{K, V}, n2 :: Nil{K, V}) = n1
-# 	cut{K, V}(n1 :: Nil{K, V}, n2 :: Node{K, V}) = n2
-# 	function cut{K, V}(n1 :: Node{K, V}, n2 :: Node{K, V})
-# 		if n1.key < n2.key
-# 			cut(n1.child[RIGHT], n2)
-# 			cut(n1, n2.child[LEFT])
-# 		elseif n1.key > n2.key
-# 			cut(n1.child[LEFT], n2)
-# 			cut(n1, n2.child[RIGHT])
-# 		else
-# 
-# 			flag, node = assign(node, n1.key, n1.value)
-# 			cut(n1.child[LEFT], n2.child[LEFT])
-# 			cut(n1.child[RIGHT], n2.child[RIGHT])
-# 		end
-# 	end
-# 	node = nil(K, V)
-# 	cut(n1, n2)
-# 	node
-# end
- 
+# if small t1 (n)
+function diff_nlogm{K, V} (t1 :: Node{K, V}, t2 :: Node{K, V}, cf :: Function) 
+	ks, vs = flatten(t1)
+	s = 1
+	d = 0
+	while s <= length(ks)
+		if !has(t2, ks[s], cf)
+			d += 1
+			ks[d] = ks[s]
+			vs[d] = vs[s]
+		end
+		s += 1
+	end
+	build(ks[1 : d], vs[1 : d])
+end
+
+diff_linear{K, V} (t1 :: Nil{K, V}, t2 :: Avl{K, V}, cf :: Function) = t1
+diff_linear{K, V} (t1 :: Node{K, V}, t2 :: Nil{K, V}, cf :: Function) = t1
+function diff_linear{K, V} (t1 :: Node{K, V}, t2 :: Node{K, V}, cf :: Function)
+	a, av = flatten(t1)
+	b, bv = flatten(t2)
+	
+	dst = 0
+	src = 1
+	cmp = 1
+	< = cf
+	
+	while src <= length(a) && cmp <= length(b)
+		if a[src] < b[cmp] 
+			dst += 1
+			a[dst] = a[src]
+			av[dst] = av[src]
+			src += 1
+		elseif b[cmp] < a[src] 
+			cmp += 1
+		else
+			src += 1
+			cmp += 1
+		end 
+	end 
+	while src <= length(a)
+		dst += 1
+		a[dst] = a[src]
+		av[dst] = av[src]
+		src += 1
+	end 
+	build(a[1 : dst], av[1 : dst])
+end
+

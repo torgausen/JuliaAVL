@@ -12,31 +12,10 @@ function issorted{T}(a :: Vector{T}, cf :: Function)
 	return true
 end
 
-# 
-# assert(issorted ([5.0, 4.0, 3.0, 2.0, 1.0], >))
-# assert(issorted ([5.0], isless))
-# assert(issorted ([], isless))
 
 # returns f(x, y) if b is false, otherwise f(y, x)
 turn (f :: Function, x, y, b :: Bool) = apply(f, ((x, y), (y, x)) [b + 1])
 
-
-# sshow{K, V}(io, nil :: Nil{K, V}) = "Avl{}"
-# function sshow{K, V}(io, node :: Node{K, V})
-# 	flag = true
-# 	str = "Avl{("
-# 	for x in node
-# 		if flag 
-# 			str = strcat(str, string(x[KEY]), "=>", string(x[VALUE]), ")")
-# 			flag = false
-# 		else
-# 			str = strcat(str, ", (", string(x[KEY]), "=>", string(x[VALUE]), ")")
-# 		end
-# 	end
-# 	return strcat(str, "}")
-# end	
-# 
-# show{K, V}(x, node :: Avl{K, V}) = println(sshow(stdout_stream, node))
 
 map{K, V}(f :: Function, node :: Nil{K, V}) = node
 function map{K, V}(f :: Function, node :: Node{K, V})
@@ -47,8 +26,6 @@ function map{K, V}(f :: Function, node :: Node{K, V})
 	out.bal = node.bal
 	out
 end		
-
-
 
 # The keys must be sorted. For a set, the keys must also be unique
 function build{K, V}(ks :: Vector{K}, vs :: Vector{V})
@@ -71,36 +48,67 @@ function build{K, V}(ks :: Vector{K}, vs :: Vector{V})
 end
 
 
-
 # returns tuple of (array of keys, array of values)
 # non destructive
-flatten{K, V} (node :: Nil{K, V}) = (Array(K, 0), Array(V, 0))
-function flatten{K, V} (node :: Node{K, V})
-	len = node.count
+# flatten{K, V} (node :: Nil{K, V}) = (Array(K, 0), Array(V, 0))
+# function flatten{K, V} (node :: Node{K, V})
+# 	len = node.count
+# 	ks = Array(K, len)
+# 	vs = Array(V, len)
+# 	stack = Array(Avl{K, V}, 0)
+# 	push(stack, nil(K, V)) # guard element
+# 	i = 1 
+# 	while notempty(node)
+# 		while notempty(node.child[LEFT])
+# 			s_node = Node(node.key, node.value)
+# 			s_node.child[RIGHT] = node.child[RIGHT]
+# 			push(stack, s_node)
+# 			node = node.child[LEFT]
+# 		end	
+# 		ks[i] = node.key
+# 		vs[i] = node.value
+# 		i += 1
+# 		node = node.child[RIGHT]
+# 		
+# 		if isempty(node)
+# 			node = pop(stack)
+# 		end 
+# 	end 
+# 	return (ks, vs)
+# end
+
+
+function flatten {K, V} (node :: Avl{K, V}) 
+
+	len = length(node)
+	
 	ks = Array(K, len)
 	vs = Array(V, len)
-	stack = Array(Avl{K, V}, 0)
-	push(stack, nil(K, V)) # guard element
-	i = 1 
+ 	stack = Node{K, V}[]
+	
 	while notempty(node)
-		while notempty(node.child[LEFT])
-			s_node = Node(node.key, node.value)
-			s_node.child[RIGHT] = node.child[RIGHT]
-			push(stack, s_node)
-			node = node.child[LEFT]
-		end	
+		push(stack, node)
+		node = node.child[LEFT]
+	end
+	i = 1
+	while notempty(stack) 
+		node = pop(stack)
 		ks[i] = node.key
 		vs[i] = node.value
 		i += 1
-		node = node.child[RIGHT]
 		
-		if isempty(node)
-			node = pop(stack)
-		end 
-	end 
-	return (ks, vs)
+		node = node.child[RIGHT]
+		if notempty(node)
+			push(stack, node) 
+			node = node.child[LEFT]
+			while notempty(node) 
+				push(stack, node)
+				node = node.child[LEFT]
+			end
+		end
+	end
+	(ks, vs)
 end
-
 
 
 # checks structure, that is, is node balanced as an AVL tre?
@@ -139,31 +147,8 @@ function valid_sort{K, V}(node :: Node{K, V}, cf :: Function)
 	end
 	return true
 end
-# 
-# # is node a multi-set sorted tree?
-# valid_multi_sort_dict{K, V}(node :: Nil{K, V}, cf :: Function) = true
-# function valid_multi_sort_dict{K, V}(node :: Node{K, V}, cf :: Function)
-# 	prev = first(node)
-# 	flag = true
-# 	for kv in node
-# 		if flag then
-# 			flag = false
-# 			continue
-# 		end
-# 		if cf(kv[1], prev[1])
-# 			return false
-# 		end
-# 		prev = kv
-# 	end
-# 	return true
-# end
-# 
 
-
-
-
-
-# call this on a tree to display it's structure
+# call this on a tree to display it's structure. Works with very small trees only
 # a number is followed by '-', "", or '+' indicates count and balance factors
 # below is either a key or key, value pair, according to show_values bool parameter
 

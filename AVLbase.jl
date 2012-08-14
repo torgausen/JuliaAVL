@@ -37,8 +37,8 @@ function Node{K, V}(key :: K, value :: V)
 	node.child = [nil(K, V), nil(K, V)]
 	return node
 end
-
-copy{K, V}(node :: Nil{K, V}) = copy(node) 
+# shallow copy
+copy{K, V}(node :: Nil{K, V}) = node
 function copy{K, V}(node :: Node{K, V}) 
 	out = Node(node.key, node.value)
 	out.child[LEFT]  = copy(node.child[LEFT])
@@ -48,7 +48,8 @@ function copy{K, V}(node :: Node{K, V})
 	out
 end
 
-deeper_copy{K, V}(node :: Nil{K, V}) = copy(node) 
+# depth is all relative
+deeper_copy{K, V}(node :: Nil{K, V}) = node
 function deeper_copy{K, V}(node :: Node{K, V}) 
 	out = Node(copy(node.key), copy(node.value))
 	out.child[LEFT]  = deeper_copy(node.child[LEFT])
@@ -65,6 +66,7 @@ notempty (node :: Avl) = isa(node, Node)
 length{K, V}(node :: Nil{K, V}) = 0
 length{K, V}(node :: Node{K, V}) = node.count
 
+# follow highest path to bottom
 height{K, V}(node :: Nil{K, V}) = 0
 function height{K, V}(node :: Node{K, V})
 	if node.bal != RIGHT
@@ -73,12 +75,6 @@ function height{K, V}(node :: Node{K, V})
 	1 + height(node.child[RIGHT])
 end
 
-copy{K, V}(node :: Nil{K, V}) = node 
-function copy{K, V}(node) # :: Node{K, V})
-	left = copy(node.child[LEFT])
-	right = copy(node.child[RIGHT])
-	Node([left, right], node.count, node.bal)
-end
 
 =={K,V}(a ::  Nil{K,V}, b :: Nil{K,V}) = true
 =={K,V}(a :: Node{K,V}, b :: Nil{K,V}) = false
@@ -127,12 +123,12 @@ end
 range{K,V}(node :: Nil{K, V}, fst :: K, lst :: K, cf :: Function) = Array((K, V), 0)
 function range{K, V}(node :: Node{K, V}, fst :: K, lst :: K, cf :: Function)
 	out = Array((K, V), 0)
-	rec(n :: Nil{K, V}) = return 
+	rec(n :: Nil{K, V}) = nothing
 	function rec(n :: Node{K, V})
 		if cf(lst, n.key)
 			rec(n.child[LEFT])
 		elseif cf(n.key, fst)
-			rec(n.child[RIGHT])sd
+			rec(n.child[RIGHT])
 		else
 			rec(n.child[LEFT])
 			push(out, (n.key, n.value))
@@ -142,7 +138,6 @@ function range{K, V}(node :: Node{K, V}, fst :: K, lst :: K, cf :: Function)
 	rec(node) 
 	out 
 end
-
 
 function rotate(node, side)
 	edis = UNISIDE - side
@@ -229,8 +224,6 @@ function rotate(node, side)
 	return (false, node)
 end
 
-
-
 assign{K, V}(node :: Nil{K, V}, key :: K, value :: V, cf :: Function) = (true, 1, Node(key, value))
 function assign{K, V}(node :: Node{K, V}, key :: K, value :: V, cf :: Function)
 	if cf(key, node.key)
@@ -256,18 +249,6 @@ function assign{K, V}(node :: Node{K, V}, key :: K, value :: V, cf :: Function)
 	end
 	return (longer, increment, node)
 end
-
-
-# takes a function of two arguments and a Bool returns the function with arguments swapped when
-# bool is true. Example isgreater = turn(isless, true).
-turn (f :: Function, b :: Bool) = (x, y) -> apply(f, ((x, y),(y, x))[b + 1])
-
-# same, but always turns the function.
-turn (f :: Function) = (x, y) -> apply(f, (y, x))
-
-
-
-#load("AVLutil.jl")
 
 # may be destructive to either tree
 function tjoin{K, V}(t1 :: Avl{K, V}, m :: (K, V), t2 :: Avl{K, V})
@@ -350,72 +331,6 @@ function tsplit{K, V}(node :: Node{K, V}, key :: K, cf :: Function)
 	return t1, t2, theK
 end
 
-function test_split()
-	i = 0
-	while true
-		i += 1
-		print(i, " ")
-		flush(stdout_stream)
-		n = ifloor(rand() * 100000)
-		k = ifloor(rand() * (n-1)) + 1
-		t = build([1:n], [1:n])
-		t1, t2, theK = tsplit(t, k, isless)
-		
-		#draw(t1)
-		#println(k)
-		#draw(t2)
-		assert(valid_avl(t1)[1], "t1 not valid")
-		assert(valid_avl(t2)[1], "t2 not valid")
-		
-		assert(valid_count(t1)[1], "t1 count not valid")
-		assert(valid_count(t2)[1], "t2 count not valid")
-		if isa(theK, Nothing) 
-			assert(length(t1) + length(t2) == n, "count error")
-		else
-			assert(length(t1) + length(t2) + 1 == n, "count error")
-		end
-		assert(valid_sort(t1, isless), "t1 sort not valid")
-		assert(valid_sort(t2, isless), "t2 sort not valid")
-	end
-end
-#test_split()
-
-
-
-# load("AVLutil.jl")
-# function runme()
-# 	while true
-# 		n = int(rand() * 45) + 1
-# 		m = int(rand() * 45) + 1
-# 		an = [1:n]
-# 		am = 100 - reverse([1:m])
-# 		mid = (50, 50)
-# 	
-# 		
-# 		t1 = build(an, an)
-# 		t2 = build(am, am)
-# # 		println("--- NEW TRIAL ---  (mid = $n)")
-# # 		println("t1 = ")
-# # 		draw(t1)
-# # 		println("t2 = ")
-# # 		draw(t2)
-# # 		println("h1 = $(height(t1)), h2 = $(height(t2)). Begin descent: ")
-# # 		
-# 		t3 = tjoin(t1, mid, t2)
-# 		println("result:")
-# 		draw(t3)
-# 		if !(valid_avl(t3)[1]) 
-# 			println("NOT AVL STRUCTURE!")
-# 			break
-# 		elseif !(valid_count(t3)[1]) 
-# 			println("WRONG COUNT!")
-# 			draw(t3, false, true)
-# 			break
-# 		end
-# 	#	assert(valid_avl(t3), (n, m))
-# 	end
-# end
-#runme()
 
 # del first or last, according to b. Assumes node not empty
 function del_ultra{K, V}(node :: Node{K, V}, b :: Bool)
@@ -476,9 +391,9 @@ end
 # Consider rotating to the bottom instead, perhaps more cache efficient?
 del{K, V}(node :: Nil{K, V}, key :: K, cf :: Function) = throw (KeyError(key))
 function del{K, V}(node :: Avl{K, V}, key :: K, cf :: Function)
-	side = key < node.key
+	side = cf(key, node.key)
 	if side != LEFT 
-		if key > node.key
+		if cf(node.key, key)
 			side = RIGHT
 		else
 			return del_helper(node)
@@ -487,6 +402,41 @@ function del{K, V}(node :: Avl{K, V}, key :: K, cf :: Function)
 	edis = UNISIDE - side 
 
 	shorter, decrement, ret_val, node.child[side] = del(node.child[side], key, cf)
+	
+	node.count -= decrement
+	if shorter == false 
+		return (false, decrement, ret_val, node)
+	end
+ 
+	if node.bal == side 
+		node.bal = BALANCED
+	elseif node.bal == BALANCED 
+		node.bal = edis
+		shorter = false 
+	elseif node.bal == edis 
+		longer, node = rotate(node, edis)
+		shorter = !longer 
+	end
+	
+	return (shorter, decrement, ret_val, node)
+end
+
+# TOR! YOU HAVE TO REFACTOR MORE!
+del_any{K, V}(node :: Nil{K, V}, key :: K, cf :: Function) = (false, 0, nothing, node)
+function del_any{K, V}(node :: Avl{K, V}, key :: K, cf :: Function)
+	side = cf(key, node.key)
+	if side != LEFT 
+		if cf(node.key, key)
+			side = RIGHT
+		else
+			return del_helper(node)
+		end
+	end
+
+	shorter, decrement, ret_val, node.child[side] = del_any(node.child[side], key, cf)
+
+	edis = UNISIDE - side 
+
 	node.count -= decrement
 	if shorter == false 
 		return (false, decrement, ret_val, node)
@@ -506,63 +456,5 @@ function del{K, V}(node :: Avl{K, V}, key :: K, cf :: Function)
 end
 
 
-
-
-# 
-# 
-# # Doesn't even work yet !!!
-# fast_insert2{K, V}(node :: Nil{K, V}, key :: K, value :: V) = Node(key, value)
-# function fast_insert2{K, V}(node :: Node{K, V}, key :: K, value :: V)
-# 	# try to use loops instead of recursion
-# 	stack = Array((Node{K, V}, Int8), 0)  
-# 	
-# 	#find place to insert
-# 	while notempty (node)
-# 		side = (key > node.key) + 1
-# 		push(stack, (node, side))
-# 		node = node.child[side]
-# 	end
-# 	# insert new key
-# 	node, side = pop(stack) 
-# 	node.child[side] = Node(key, value)
-#
-#	
-#	# eleiminate all but the necessary condtional branches
-# 	longer = true
-# 	while (longer) && (isempty(stack) == false) # if longer must check for balance changes
-# 		if (node.bal == side) 
-# 			longer, node = rotate(node, side) 
-# 			parent, side = pop(stack) 
-# 			parent.child[side] = node
-# 			node = parent	
-# 			break # during insert, rotate will never leave the branch higher
-# 		end
-# 		
-# 		longer, node.bal = begin
-# 			bal = node.bal
-# 			nl = int8(!longer)
-# 			nl |= nl << 1
-# 			upper = bal & nl # bal if not longer
-# 			m = bal $ bal >> 1
-# 			m $= int8(1)
-# 			m |= m << 1
-# 			lower = m & side
-# 			lower = (lower & ~nl) & 0x3 
-# 			
-# 			(bool(int8(longer) & ~(bal | bal >> 1)) , lower | upper)
-# 		end
-# 		
-# 		parent, side = pop(stack) 
-# 		parent.child[side] = node
-# 		node = parent	
-# 	end	
-# 	while isempty(stack) == false
-# 		parent, side = pop(stack) 
-# 		parent.child[side] = node
-# 		node = parent	
-# 	end	
-# 	return node
-# end
-# 
 
 

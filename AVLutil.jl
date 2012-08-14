@@ -1,6 +1,7 @@
 
 require ("AVLbase.jl")
 require ("AVLorder.jl")
+require ("AVLiter.jl")
 
 # is a vector sorted by function cf ?
 function issorted{T}(a :: Vector{T}, cf :: Function)
@@ -12,8 +13,18 @@ function issorted{T}(a :: Vector{T}, cf :: Function)
 	return true
 end
 
+# is a vector sorted by function cf ?
+function issortedset{T}(a :: Vector{T}, cf :: Function)
+	for i = 2 : length(a)
+		if ! cf(a[i-1], a[i])
+			return false
+		end
+	end
+	return true
+end
 
-# returns f(x, y) if b is false, otherwise f(y, x)
+
+# returns f(x, y)include if b is false, otherwise f(y, x)
 turn (f :: Function, x, y, b :: Bool) = apply(f, ((x, y), (y, x)) [b + 1])
 
 
@@ -26,6 +37,15 @@ function map{K, V}(f :: Function, node :: Node{K, V})
 	out.bal = node.bal
 	out
 end		
+
+map!{K, V}(fn :: Function, node :: Nil{K, V}) = node
+function map!{K, V}(fn :: Function, node :: Node{K, V})
+	node.value = fn(node.value)
+	map!(fn, node.child[LEFT])
+	map!(fn, node.child[RIGHT])
+end		
+
+
 
 # The keys must be sorted. For a set, the keys must also be unique
 function build{K, V}(ks :: Vector{K}, vs :: Vector{V})
@@ -47,45 +67,10 @@ function build{K, V}(ks :: Vector{K}, vs :: Vector{V})
 	return n
 end
 
-
-# returns tuple of (array of keys, array of values)
-# non destructive
-# flatten{K, V} (node :: Nil{K, V}) = (Array(K, 0), Array(V, 0))
-# function flatten{K, V} (node :: Node{K, V})
-# 	len = node.count
-# 	ks = Array(K, len)
-# 	vs = Array(V, len)
-# 	stack = Array(Avl{K, V}, 0)
-# 	push(stack, nil(K, V)) # guard element
-# 	i = 1 
-# 	while notempty(node)
-# 		while notempty(node.child[LEFT])
-# 			s_node = Node(node.key, node.value)
-# 			s_node.child[RIGHT] = node.child[RIGHT]
-# 			push(stack, s_node)
-# 			node = node.child[LEFT]
-# 		end	
-# 		ks[i] = node.key
-# 		vs[i] = node.value
-# 		i += 1
-# 		node = node.child[RIGHT]
-# 		
-# 		if isempty(node)
-# 			node = pop(stack)
-# 		end 
-# 	end 
-# 	return (ks, vs)
-# end
-
-
 function flatten {K, V} (node :: Avl{K, V}) 
-
-	len = length(node)
-	
-	ks = Array(K, len)
-	vs = Array(V, len)
+	ks = Array(K, length(node))
+	vs = Array(V, length(node))
  	stack = Node{K, V}[]
-	
 	while notempty(node)
 		push(stack, node)
 		node = node.child[LEFT]

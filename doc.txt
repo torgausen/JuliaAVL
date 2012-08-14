@@ -1,0 +1,195 @@
+
+
+SortDict(ks :: Vector{K}, vs :: Vector{V})
+
+	Creates a new SortDict from an array of keys and a corresponding array of values.
+
+	example:
+
+	sd = SortDict(
+		["One", "Two", "Twoandahalf"], 
+		[1.0, 2.0, 2.5]
+	)
+
+	The isless comarator will be used, unless you specify your own as a third argument.
+	The keys must be sorted with no equal keys (according to the compare function used)
+
+SortDict(K, V)
+
+	Creates a new empty SortDict for keys of type K, values of type V
+	
+	Values can then be assigned to keys like with a Dict(): sd["yo"] = "mama"
+
+eltype(sd) 
+
+	returns tuple of types : (key_type, value_type)
+
+isempty (sd), length(sd) or numel(sd), isequal(sd1, sd2)
+	
+	Obvious functions
+	
+copy(sd) 
+	
+	Returns a shallow copy of a tree.
+	
+deeper_copy(sd)
+
+	Returns a not-so shallow copy of a tree.
+	There is no way to guarantee true deep copy, since it all depends on the copy functions of the keys and values.
+
+flatten(sd), keys(sd), values(sd)
+
+	flatten returns tuple of arrays: (keys, values)
+
+del_all(sd)
+
+	Clear the SortDict
+
+map(fn, sd), map!(fn, sd)
+
+	Applies fn to all values in sd. 
+	
+	
+Goright
+Goleft
+Gorightkv
+Goleftkv
+	
+	These are iterator constructors.
+	You can iterate over a SortDict directly or get special iterators that begins at given
+	keys and go left or right. These can of course be combined with Julia's generic iterator functions.
+	
+	examples:
+	
+		sd = SortDict([1,2,3,4], [1.0, 2.0, 3.0, 4.0])
+
+		sum(sd) 	=> 10.0
+	
+	sum(sd) is the same as sum(Goright(sd))
+	
+		reduce ((a,b) -> (2a+b),2.0, (Goleft(sd)))	=> 81.0
+
+		reduce ((a,b) -> (2a+b),2.0, (Goright(sd)))	=> 58.0
+		
+		sum(Goright(sd, 2))
+		
+		for x in Goright(sd,2)
+			print(x, " ")		=> 2.0 3.0 4.0 
+		end
+
+	The versions with kv suffix returns (key, value) tuples instead of just values:
+	
+		for x in Goleftkv(sd,2)
+			print(x, " ")		=> (2,2.0) (1, 1.0) 
+		end
+	
+	Time complexities for iterators are m + log n, where n is the size of the SortDict, m the length of the iteration run.
+	
+split!(sd, key)
+
+	Returns two SortDicts sd1 and sd2.
+	
+	sd1 contains all keys up to but not including 'key', while sd2 contains the rest.
+	
+	Runs in O(log n).
+	
+	
+join!(sd1, sd2)
+
+	Appends sd1 and sd2 unless they overlap in range. If they overlap an exception is thrown.
+	
+	Runs in O(log n).
+	
+	If you know that two trees have only a small overlapping range, a fast (destructive) union would look something like this:
+
+	1. order trees so that t1 has the low keys and t2 has the high keys
+	2. t1, t1_right = split! (t1, first(t2)) 
+	3  t2_left, t2 = split! (t2, last(t1)) 
+	4. t_middle = union(t1_right, t2_left)
+	5. join! (join! (t1, t_middle) t2)
+
+	This would all be in log time except step 4.
+
+first(sd)
+last(sd)
+first(sd, m)
+last(sd, m)
+
+	Returns the first or last element(s) of sd. Runs in log n + m
+
+valid(sd)
+	
+	Checks that sd is actually a valid SortDict. Returns false if the datastructure is somehow corrupted.
+	Runs in linear time.
+
+shift(sd) or del_first(sd)
+pop(sd) or del_last(sd)
+
+	Destructive functions that removes and returns values at the extreme ends of a non-empty SortDict.
+	Runs in log n
+
+del(sd, key)
+
+	Returns the deleted (key, value) tuple, which must exist. Runs in O(log n)
+
+del_any(sd, key, default)
+
+	Returns the deleted (key, value) tuple, if it exist, else returns default. Runs in O(log n)
+	
+has(sd, key) or Contains(sd, key)
+
+	Returns Bool. Runs in O(log n)
+
+get(sd, key, default)
+
+	Returns item, if it exist, else returns default. Runs in O(log n)
+	
+rank(sd, key)
+
+	Returns the position of key in the SortDict
+	example:
+	
+	sd = SortDict(["Aardvark", "baa", "cab", "dab"], [8,3,3,3])
+
+	rank(sd, "Aardvark") 	=> 1
+	
+	Note that ranks are 1-based, in accordance with Julia arrays.
+	Runs in O(log n)
+	
+select(sd, r)
+
+	Returns the (key, value) tuple associated with rank r
+	
+	Using the above sd, select(sd, 3) would return ("cab", 3). 
+
+	Note that select is 1-based, in accordance with Julia arrays.
+	Runs in O(log n)
+	
+before(sd, key)
+after(sd, key)
+
+	returns the (key, value) tuple that comes just before or just after key.
+	An exception is thrown if there is nothing in the SortDict before or after the key.
+	However, the key need not exist, so the following works:
+	
+	sd = SortDict(["Aardvark", "baa", "cab", "dab"], [8,3,3,3])
+	
+	before(sd, "zebra") 	=> ("dab", 3)
+	
+union(sd1, sd2)
+union!(sd1, sd2)
+
+	Returs the union of the two SortDicts. Compare functions must be identical.
+	The values from sd2 are used whenever equal keys are encountered.  
+	Runs in linear time.
+	The destructive variant may be faster when the sets are of different size.
+	
+intersect(sd1, sd2)
+
+	Returns the common elements of sd1 and sd2 in linear time. Sometimes faster if one 
+	of the SortDicts is much smaller than the other.
+
+difference(sd1, sd2)
+
+	Returns the elements sd1 has, that sd2 doesn't have in linear time. Sometimes faster if one 
+	of the SortDicts is much smaller than the other.

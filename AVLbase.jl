@@ -29,8 +29,16 @@ type Node{K, V} <: Avl{K, V}
 	count :: Int
 	bal :: Int8
 	# NOTE: the count and balance fields can later be packed into one 64 (62+2), or 32 (30+2) bit integer. 
-	# It's just simpler to keep them appart while working on the algorithms
+	# It's just simpler to keep them apart while working on the algorithms
 end
+
+abstract Associative{K, V}
+
+type SortDict{K, V} <: Associative{K, V}
+	tree :: Avl{K, V}
+	cf :: Function # compare function
+end
+
 
 function Node{K, V}(key :: K, value :: V) 
 	node = Node(Array(Avl{K, V}, 2), key, value, 1, BALANCED)
@@ -75,15 +83,15 @@ function height{K, V}(node :: Node{K, V})
 	1 + height(node.child[RIGHT])
 end
 
-
-=={K,V}(a ::  Nil{K,V}, b :: Nil{K,V}) = true
-=={K,V}(a :: Node{K,V}, b :: Nil{K,V}) = false
-=={K,V}(a ::  Nil{K,V}, b :: Node{K,V}) = false
-function =={K,V}(a :: Node{K,V}, b :: Node{K,V}) 
-	(a.key == b.key) &&
-	(a.value == b.value) &&
-	(a.child[LEFT] == b.child[LEFT]) &&
-	(a.child[RIGHT] == b.child[RIGHT]) 
+isequal{K,V}(a ::  Nil{K,V}, b :: Nil{K,V}, cf :: Function) = true
+isequal{K,V}(a :: Node{K,V}, b :: Nil{K,V}, cf :: Function) = false
+isequal{K,V}(a ::  Nil{K,V}, b :: Node{K,V}, cf :: Function) = false
+function isequal{K,V}(a :: Node{K,V}, b :: Node{K,V}, cf :: Function) 
+	   (!cf(a.key, b.key)) &&
+	   (!cf(b.key, a.key)) &&
+	   (a.value == b.value) &&
+	   (isequal(a.child[LEFT], b.child[LEFT], cf)) &&
+	   (isequal(a.child[RIGHT], b.child[RIGHT], cf)) 
 	# no need to bother with validity here
 end
 
@@ -138,6 +146,7 @@ function range{K, V}(node :: Node{K, V}, fst :: K, lst :: K, cf :: Function)
 	rec(node) 
 	out 
 end
+
 
 function rotate(node, side)
 	edis = UNISIDE - side
@@ -422,8 +431,8 @@ function del{K, V}(node :: Avl{K, V}, key :: K, cf :: Function)
 end
 
 # TOR! YOU HAVE TO REFACTOR MORE!
-del_any{K, V}(node :: Nil{K, V}, key :: K, cf :: Function) = (false, 0, nothing, node)
-function del_any{K, V}(node :: Avl{K, V}, key :: K, cf :: Function)
+del_any{K, V}(node :: Nil{K, V}, key :: K, default, cf :: Function) = (false, 0, default, node)
+function del_any{K, V}(node :: Avl{K, V}, key :: K, default, cf :: Function)
 	side = cf(key, node.key)
 	if side != LEFT 
 		if cf(node.key, key)
@@ -433,7 +442,7 @@ function del_any{K, V}(node :: Avl{K, V}, key :: K, cf :: Function)
 		end
 	end
 
-	shorter, decrement, ret_val, node.child[side] = del_any(node.child[side], key, cf)
+	shorter, decrement, ret_val, node.child[side] = del_any(node.child[side], key, default, cf)
 
 	edis = UNISIDE - side 
 

@@ -71,15 +71,13 @@ function intersect_linear{K, V}(n1 :: Node{K, V}, n2 :: Node{K, V}, cf :: Functi
 	build(a[1 : dst], av[1 : dst])
 end
 
-
-
-intersect_nlogn{K, V} (big :: Nil{K, V}, small :: Nil{K, V}, cf :: Function) = big
-intersect_nlogn{K, V} (big :: Node{K, V}, small :: Nil{K, V}, cf :: Function) = small
-intersect_nlogn{K, V} (big :: Nil{K, V}, small :: Node{K, V}, cf :: Function) = big
+intersect_mlogn{K, V} (big :: Nil{K, V}, small :: Nil{K, V}, cf :: Function) = big
+intersect_mlogn{K, V} (big :: Node{K, V}, small :: Nil{K, V}, cf :: Function) = small
+intersect_mlogn{K, V} (big :: Nil{K, V}, small :: Node{K, V}, cf :: Function) = big
 function intersect_mlogn{K, V} (big :: Node{K, V}, small :: Node{K, V}, cf :: Function)
 	ks = K[]
 	vs = V[]
-	for (key, value) in Gorightkv(small, first(small)[KEY], cf)
+	for (key, value) in Gorightkv_fast(small)
 		if has(big, key, cf)
 			push(ks, key)
 			push(vs, value)
@@ -94,7 +92,7 @@ function diff_mlogn!{K, V} (t1 :: Node{K, V}, t2 :: Node{K, V}, cf :: Function)
 	rec{K, V}(node :: Nil{K, V}) = return
 	function rec{K, V}(node :: Node{K, V})
 		println(node.key)
-		f, c, rv, t1 = del_any(t1, node.key, cf)
+		f, c, rv, t1 = del_any(t1, node.key, nothing, cf)
 		rec(node.child[LEFT])
 		rec(node.child[RIGHT])
 	end

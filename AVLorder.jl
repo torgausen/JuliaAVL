@@ -44,17 +44,20 @@ function before{K, V} (node :: Node{K, V}, key :: K, cf :: Function)
 		if cf(key, node.key)
 			node = node.child[LEFT]
 			if isempty(node)
-				throw("before: nothing before $key")
+				if best == nothing
+					throw("before: nothing before $key")
+				end
+				return best
 			end
 		elseif cf(node.key, key)
 			best = (node.key, node.value)
 			node = node.child[RIGHT]
 		else
 			if isempty (node.child[LEFT])
-				if best != nothing
-					return best
+				if best == nothing
+					throw("before: nothing before $key")
 				end
-				throw("before: nothing before $key")
+				return best
 			else
 				return last(node.child[LEFT])
 			end
@@ -73,14 +76,17 @@ function after{K, V} (node :: Node{K, V}, key :: K, cf :: Function)
 		elseif cf(node.key, key)
 			node = node.child[RIGHT]
 			if isempty(node)
-				throw("after: nothing after $key")
+				if best == nothing
+					throw("before: nothing after $key")
+				end
+				return best
 			end
 		else
 			if isempty (node.child[RIGHT])
-				if best != nothing
-					return best
+				if best == nothing
+					throw("after: nothing after $key")
 				end
-				throw("after: nothing after $key")
+				return best
 			else
 				return first(node.child[RIGHT])
 			end

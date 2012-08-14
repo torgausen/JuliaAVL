@@ -1,4 +1,3 @@
-
 # TODO:
 # work out system of exceptions
 # more sanity tests, add performance tests to find good values for algorithm choice
@@ -393,25 +392,25 @@ function intersect {K, V} (sd1 :: SortDict{K, V}, sd2 :: SortDict{K, V})
 end
 
 
-function difference {K, V} (sd1 :: SortDict{K, V}, sd2 :: SortDict{K, V}) 
-	if sd1.cf != sd2.cf 
-		throw ("difference: non-identical compare functions")
-	end
-	if length(sd1) < length(sd2)
-		sd1, sd2 = sd2, sd1
-	end
-	
-	n = length(sd1)
-	m = length(sd2)
-
-	if INTERSECT_RATIO * n < m * log2(n)
-		println("intersect linear")
-		SortDict(intersect_linear(sd1.tree, sd2.tree, sd1.cf), sd1.cf)
-	else
- 		println("intersect mlogn")
-		SortDict(intersect_mlogn(sd1.tree, sd2.tree, sd1.cf), sd1.cf)
-	end
-end
+#function difference {K, V} (sd1 :: SortDict{K, V}, sd2 :: SortDict{K, V}) 
+#	if sd1.cf != sd2.cf 
+#		throw ("difference: non-identical compare functions")
+#	end
+#	if length(sd1) < length(sd2)
+#		sd1, sd2 = sd2, sd1
+#	end
+#	
+#	n = length(sd1)
+#	m = length(sd2)
+#
+#	if INTERSECT_RATIO * n < m * log2(n)
+#		println("intersect linear")
+#		SortDict(intersect_linear(sd1.tree, sd2.tree, sd1.cf), sd1.cf)
+#	else
+#		println("intersect mlogn")
+#		SortDict(intersect_mlogn(sd1.tree, sd2.tree, sd1.cf), sd1.cf)
+#	end
+#end
 
 
 #end # module

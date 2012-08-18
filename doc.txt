@@ -3,6 +3,9 @@ SortDict is currently implemented as an AVL tree.
 
 
 SortDict(ks, vs)
+SortDict(K, V)
+SortDict(d :: Dict)
+SortDict(a :: Tuple[])
 
 	Creates a new SortDict from an vector of keys and a corresponding vector of values.
 
@@ -16,13 +19,10 @@ SortDict(ks, vs)
 	The isless comarator will be used, unless you specify your own as a third argument.
 	The keys must be sorted with no equal keys (according to the compare function used)
 
-	
-SortDict(K, V)
-
-	Creates a new empty SortDict for keys of type K, values of type V
-	
+	SortDict(K, V) creates a new empty SortDict for keys of type K, values of type V
 	Values can then be assigned to keys like with a Dict(): sd[""] = "mama"
 
+	You can also make SortDicts out of Dicts or arrays of key, value tuples
 	
 eltype(sd) 
 
@@ -45,7 +45,9 @@ deeper_copy(sd)
 	There is no way to guarantee true deep copy, since it all depends on the copy functions of the keys and values.
 
 	
-flatten(sd), keys(sd), values(sd)
+flatten(sd)
+keys(sd)
+values(sd)
 
 	flatten returns tuple of arrays: (keys, values)
 

@@ -1,12 +1,5 @@
 # todo: tests for:
 #
-# copy, deeper_copy
-# 
-# map, map!
-# has, get,  del
-# first, last, before, after,
-
-# union, intersect, difference, join!, split!
 # Goright, Gorightkv, Goleft, Goleftkv
 
 
@@ -14,10 +7,12 @@ include ("SortDict.jl")
 
 import SORTDICT.*
 
-function simple_tests()	# very basic sanity tests
 
+# These simple tests are not very systematic, just a grab bag of tings that might need checking, or
+# stuff that actually caused problems once, and I want to assure it doesn't pop up again.
+		
+function run_simple_tests()	
 	sd = SortDict(Int, Float64)
-
 	assert(length(sd) == 0, "SortDict length broken")
 	sd[1] = 1.1
 	assert(sd[1] == 1.1, "SortDict ref broken")
@@ -132,7 +127,7 @@ function simple_tests()	# very basic sanity tests
 	
 	println("Passed basic sanity tests. But remember, that doesn't mean a thing.")
 end
-simple_tests()
+
 
 function test_assign_rand_order(n)
 	srand(1)
@@ -149,7 +144,7 @@ function test_assign_rand_order(n)
 		ks = keys(sd)
 		assert (isequal(sort!(a), ks), "not equal")
 	end
-	return ("Assign items in random order", "OK")
+	return "OK"
 end
 
 
@@ -171,7 +166,7 @@ function test_del_rand_order(n)
 		assert (isequal(a, b), "not equal")
 		assert (isempty(sd), "not empty after delete all")
 	end
-	return ("Delete all items in random order", "OK")
+	return "OK"
 end
 
 function test_del_first(n)
@@ -186,7 +181,7 @@ function test_del_first(n)
 		end
 		assert (isequal(a, b), "result not sorted")
 	end
-	return ("Delete all items from left", "OK")
+	return "OK"
 end
 
 function test_del_last(n)
@@ -201,7 +196,7 @@ function test_del_last(n)
 		end
 		assert (isequal(a, b), "result not sorted")
 	end
-	return ("Delete all items from right", "OK")
+	return "OK"
 end
 
 function test_split_and_join(n)
@@ -212,7 +207,7 @@ function test_split_and_join(n)
 		join!(sd, sd2)
 		assert(isvalid(sd), "join! broken")
 	end
-	return ("Split and join tree AT all keys in a tree", "OK")
+	return "OK"
 end
 
 function test_split_and_join_between(n)
@@ -223,7 +218,7 @@ function test_split_and_join_between(n)
 		join!(sd, sd2)
 		assert(isvalid(sd), "join! broken")
 	end
-	return ("Split and join tree BETWEEN all keys in a tree", "OK")
+	return "OK"
 end
 
 function test_rank_and_select(n)
@@ -234,7 +229,7 @@ function test_rank_and_select(n)
 		assert(rank(sd, x) == ifloor(x), "rank broken")
 		assert(select(sd, ifloor(x))[KEY] == x, "select broken")
 	end
-	return ("Select and rank of all keys in a tree", "OK")
+	return "OK"
 end 
 
 function test_basic_lookup(n)
@@ -246,7 +241,7 @@ function test_basic_lookup(n)
 		assert((x, x) == getkv(sd, x, 9999), "getkv broken") 
 		assert(has(sd, x), "has broken") 
 	end
-	return ("Checking ref, get, getkv, has", "OK")
+	return "OK"
 end	       
 
 
@@ -276,36 +271,32 @@ function test_set_ops(n)
 	assert(isequal(sd_compo, difference(sd_euler, sd_primes)), "difference broken")
 	assert(isequal(sd_primes, difference(sd_euler, sd_compo)), "difference broken")
 	
-	return ("Testing set operations","OK")
+	return "OK"
 		
 end
 
 
-
-
-
-
-
-
+# Here I try to test features more systematically.
 
 function run_tests()
-	N = 10 # don't try big numbers, usually whole trees are validated after each operation
-	function call(fn :: Function) 
-		x = apply(fn, N)
-		println(rpad(x[1], 50), x[2] )
+	N = 100 # don't try big numbers, there may be exponential behavior in some tests
+	function call(str, fn :: Function)
+		print(rpad(str, 60))
+		println(apply(fn, N))
 	end
 	
-	println((rpad("\nTesting...", 50)), "")
-	call(test_assign_rand_order)
-	call(test_del_rand_order)
-	call(test_del_first)
-	call(test_del_last)
-	call(test_split_and_join)
-	call(test_split_and_join_between)
-	call(test_rank_and_select)
-	call(test_basic_lookup)
-	call(test_set_ops)
-	     
+	println("\nTesting...")
+	call("Assign items in random order",test_assign_rand_order)
+	call("Delete all items in random order",test_del_rand_order)
+	call("Delete all items from left", test_del_first)
+	call("Delete all items from right", test_del_last)
+	call("Split and join tree AT all keys in a tree", test_split_and_join)
+	call("Split and join tree BETWEEN all keys in a tree", test_split_and_join_between)
+	call("Select and rank of all keys in a tree", test_rank_and_select)
+	call("Checking ref, get, getkv, has", test_basic_lookup)
+	call("Testing set operations", test_set_ops)
+	println()
 end
 
+run_simple_tests()
 run_tests()

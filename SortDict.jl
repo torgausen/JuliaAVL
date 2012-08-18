@@ -3,6 +3,7 @@
 #
 # work out system of exceptions
 # learn and use macros to reduce code
+# firstkv, lastkv argh
 # more sanity tests, add performance tests
 # add del_left(sd, n) or similar (drop several keys at once in log time
 # refs with range and vector? problematic: semantic mix of keys and indexes
@@ -26,7 +27,7 @@ export map, map!
 export assign, has, get, getkv, shift, del_first, pop, del_last, del, del_all, del_any
 export first, last, before, after, rank, select
 export isvalid
-export union, intersect, difference, join!, split!
+export union, intersect, difference, join!, split!, split_left!
 export Goright, Gorightkv, Goleft, Goleftkv
 
 
@@ -259,6 +260,15 @@ function split!{K, V} (sd :: SortDict{K, V}, key :: K)
 	return SortDict(t2, sd.cf)
 end
 
+function split_left!{K, V} (sd :: SortDict{K, V}, key :: K) 
+	t2, sd.tree, mid = tsplit(sd.tree, key, sd.cf)
+	if mid != nothing
+		# what to do with that extra element? I'll just insert it in t2 for now
+		f, c, t2 = assign(t2, mid[KEY], mid[VALUE], sd.cf)
+	end
+	return SortDict(t2, sd.cf)
+end
+
 
 # all of sd1's keys must be less than all of sd2's keys
 # note: destructive to the tree with the 'highest' values (when using isless as compare function)
@@ -289,6 +299,16 @@ function union{K, V} (sd1 :: SortDict{K, V}, sd2 :: SortDict{K, V})
 		throw ("union: non-identical compare functions")
 	end
 	SortDict(union_linear(sd1.tree, sd2.tree, sd1.cf), sd1.cf)
+end
+
+
+function union_quick!{K, V} (sd1 :: SortDict{K, V}, sd2 :: SortDict{K, V})
+	# assume sd1 keys mostly smaller than sd2 keys
+	a = first(sd2)[KEY]
+	b = last(sd1)[KEY]
+	sd1_r = split!(sd1, a)
+	sd2_l = split_left!(sd2, b)
+	join!(join!(sd1, union(sd1_r, sd2_l)), sd2) # the union call will check that compare functions are equal
 end
 
 function intersect {K, V} (sd1 :: SortDict{K, V}, sd2 :: SortDict{K, V}) 

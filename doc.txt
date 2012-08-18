@@ -83,8 +83,8 @@ map(fn, sd), map!(fn, sd)
 	
 Goright
 Goleft
-Gorightkv
-Goleftkv
+Goright_kv
+Goleft_kv
 	
 	These are iterator constructors. You can iterate over a SortDict directly or get special iterators
 	that begins at given keys and go left or right. These can of course be combined with Julia's generic 
@@ -108,9 +108,9 @@ Goleftkv
 			print(x, " ")		=> 2.0 3.0 4.0 
 		end
 
-	The versions with kv suffix returns (key, value) tuples instead of just values:
+	The versions with _kv suffix returns (key, value) tuples instead of just values:
 	
-		for x in Goleftkv(sd,2)
+		for x in Goleft_kv(sd,2)
 			print(x, " ")		=> (2,2.0) (1, 1.0) 
 		end
 	
@@ -139,6 +139,10 @@ first(sd)
 last(sd)
 first(sd, m)
 last(sd, m)
+first_kv(sd)
+last_kv(sd)
+first_kv(sd, m)
+last_kv(sd, m)
 
 	Returns the first or last element(s) of sd. Runs in O((log n) + m)
 
@@ -151,15 +155,19 @@ valid(sd)
 	
 shift(sd) or del_first(sd)
 pop(sd) or del_last(sd)
+del_first_kv(sd)
+del_last_kv(sd)
 
-	Destructive functions that removes and returns values at the extreme ends of a non-empty SortDict.
+	Destructive functions that removes and returns items from the extreme ends of a non-empty SortDict.
 	Runs in log n
 
 	
 del(sd, key)
 del(sd, key, default)
+del_kv(sd, key)
+del_kv(sd, key, default)
 
-	Returns the deleted (key, value) tuple, which must exist, unless a default is given. 
+	Returns the deleted value or (key, value) tuple, which must exist, unless a default is given. 
 	Runs in O(log n)
 	
 
@@ -172,7 +180,7 @@ get(sd, key, default)
 
 	Returns item, if it exist, else returns default. Runs in O(log n)
 
-getkv(sd, key, default)
+get_kv(sd, key, default)
 
 	Same, but returns (key, value). Runs in O(log n)
 	
@@ -190,10 +198,10 @@ rank(sd, key)
 	
 	
 select(sd, r)
-
-	Returns the (key, value) tuple associated with rank r
+select_kv(sd, r)
+	Returns the value or (key, value) tuple associated with rank r
 	
-	Using the above sd, select(sd, 3) would return ("cab", 3). 
+	Using the above sd, select_kv(sd, 3) would return ("cab", 3). 
 
 	Note that select is 1-based, in accordance with Julia arrays.
 	Runs in O(log n)
@@ -201,6 +209,8 @@ select(sd, r)
 	
 before(sd, key)
 after(sd, key)
+before_kv(sd, key)
+after_kv(sd, key)
 
 	returns the (key, value) tuple that comes just before or just after key.
 	An exception is thrown if there is nothing in the SortDict before or after the key.

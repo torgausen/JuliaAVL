@@ -445,7 +445,7 @@ valid_sort{K, V}(node :: Nil{K, V}, cf :: Function) = true
 function valid_sort{K, V}(node :: Node{K, V}, cf :: Function)
 	prev = first(node)
 	flag = true
-	for kv in Gorightkv(node, first(node)[KEY], cf)
+	for kv in Goright_kv(node, first(node)[KEY], cf)
 		if flag then
 			flag = false
 			continue # skip first iteration

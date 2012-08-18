@@ -1,5 +1,22 @@
 
-SortDict is currently implemented as an AVL tree. 
+
+Some general notes:
+
+1. Several functions, such as first() and after() have versions with _kv suffix that returns 
+   a (key, value) tupple instead of just a value. 
+   
+2. Things are still under construction and nothing is optimized yet. Performance should soon improve considerably.
+
+3. I Still haven't added convert calls to assignments (and elsewhere), so the types are somewhat constrained: you can make a
+   SortDict of ('Char', Float64), but not of, say, (String, Number). I think the strict types makes for easier debugging, so
+   I'd like to keep it this way at least until I have optimized the core routines.
+
+4. SortDict is currently implemented as an AVL tree. This may change to Red-Black or AA tree, or the choice of underlying
+   datastructure could be given to the user.
+
+   
+If you find any errors or have any comments, questions or suggestions, please let me know at: https://github.com/torgausen/JuliaAVL
+--------------------------------------------------------------------------------------------------------------------------------------
 
 
 SortDict(ks, vs)
@@ -29,7 +46,9 @@ eltype(sd)
 	returns tuple of types : (key_type, value_type)
 
 	
-isempty (sd), length(sd) or numel(sd), isequal(sd1, sd2)
+isempty(sd)
+length(sd) or numel(sd)
+isequal(sd1, sd2)
 	
 	Obvious functions
 
@@ -67,9 +86,9 @@ Goleft
 Gorightkv
 Goleftkv
 	
-	These are iterator constructors.
-	You can iterate over a SortDict directly or get special iterators that begins at given
-	keys and go left or right. These can of course be combined with Julia's generic iterator functions.
+	These are iterator constructors. You can iterate over a SortDict directly or get special iterators
+	that begins at given keys and go left or right. These can of course be combined with Julia's generic 
+	iterator functions.
 	
 	examples:
 	
@@ -83,7 +102,7 @@ Goleftkv
 
 		reduce ((a,b) -> (2a+b),2.0, (Goright(sd)))	=> 58.0
 		
-		sum(Goright(sd, 2))
+		sum(Goright(sd, 2)) 		=> 9.0
 		
 		for x in Goright(sd,2)
 			print(x, " ")		=> 2.0 3.0 4.0 
@@ -153,6 +172,9 @@ get(sd, key, default)
 
 	Returns item, if it exist, else returns default. Runs in O(log n)
 
+getkv(sd, key, default)
+
+	Same, but returns (key, value). Runs in O(log n)
 	
 rank(sd, key)
 
@@ -192,23 +214,31 @@ after(sd, key)
 	
 	
 union(sd1, sd2)
-union!(sd1, sd2)
 
 	Returs the union of the two SortDicts. Compare functions must be identical.
 	The values from sd2 are used whenever equal keys are encountered.  
-	The destructive variant may be faster when the sets are of different size.
 	Runs in O(n).
+
+	Much faster union can be achieved with join! and split! if you happen to know that the keys in the
+	respective dicts do not overlap much. Example:
 	
+	function union_quick!{K, V} (sd1 :: SortDict{K, V}, sd2 :: SortDict{K, V})
+		# assume sd1 keys mostly smaller than sd2 keys
+		a = first_kv(sd2)[KEY]
+		b = last_kv(sd1)[KEY]
+		sd1_r = split!(sd1, a)
+		sd2_l = split_left!(sd2, b)
+		join!(join!(sd1, union(sd1_r, sd2_l)), sd2) # the union call will check that compare functions are equal
+	end
+
 	
 intersect(sd1, sd2)
 
-	Returns the common elements of sd1 and sd2. Intersections are calculated faster when one 
-	of the SortDicts is much smaller than the other.
+	Returns the common elements of sd1 and sd2. 
 	Runs in O(n).
 	
 	
 difference(sd1, sd2)
 
-	Returns the elements sd1 has, that sd2 doesn't have. Sometimes faster if one 
-	of the SortDicts is much smaller than the other.
+	Returns the elements sd1 has, that sd2 doesn't have. 
 	Runs in O(n).

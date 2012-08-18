@@ -1,6 +1,6 @@
 # todo: tests for:
 #
-# Goright, Gorightkv, Goleft, Goleftkv
+# Goright, Goright_kv, Goleft, Goleft_kv
 
 
 include ("SortDict.jl")
@@ -42,8 +42,8 @@ function run_simple_tests()
 	sd2['d'] = 9
 	assert(sd['d'] != sd2['d'], "SortDict copy broken")
 	sd = SortDict([-10 : 10], [-10 : 10] +1)
-	assert(first(sd) == (-10, -9))
-	assert(last(sd) == (10, 11))
+	assert(first_kv(sd) == (-10, -9))
+	assert(last_kv(sd) == (10, 11))
 	
 	sd = SortDict([5 : 10], [5.0:10.0])
 	assert(keys(sd) == [5:10], "keys() broken")
@@ -62,7 +62,7 @@ function run_simple_tests()
 	assert (arr == [7.0, 6.0, 5.0], "Goleft iterator broken")
 	
 	arr = {}
-	for x in Gorightkv(sd, 7)
+	for x in Goright_kv(sd, 7)
 		push(arr, x)
 	end
 	assert (arr == [(7,7.0), (8,8.0), (9,9.0), (10, 10.0)], "Gorightkv iterator broken")
@@ -81,18 +81,18 @@ function run_simple_tests()
 	sd = SortDict([5 : 10], [5.0:10.0])
 	
 	assert(rank(sd, 6) == 2, "rank broken")
-	assert(select(sd, 3) == (7,7.0), "select broken")
-	assert(after(sd, 7) == (8, 8.0), "after broken")
-	assert(after(sd, -77) == (5, 5.0), "after broken")
-	assert(before(sd, 7) == (6, 6.0), "before broken")
-	assert(before(sd, 77) == (10, 10.0), "before broken")
+	assert(select_kv(sd, 3) == (7,7.0), "select broken")
+	assert(after_kv(sd, 7) == (8, 8.0), "after broken")
+	assert(after_kv(sd, -77) == (5, 5.0), "after broken")
+	assert(before_kv(sd, 7) == (6, 6.0), "before broken")
+	assert(before_kv(sd, 77) == (10, 10.0), "before broken")
 
 	a = sort(rand(50))
 	sd = SortDict(a, a+1)
 	(ks, vs) = flatten(sd.tree); assert(isequal(sd, SortDict(ks, vs)), "build or flatten broken")
 	b = Array(Any, 0)
 	while ! isempty(sd)
-		x = (del(sd, sd.tree.key))
+		x = (del_kv(sd, sd.tree.key))
 		push(b, x[1])
 		assert(isvalid(sd), "SortDict del broken")
 	end
@@ -125,7 +125,7 @@ function run_simple_tests()
 	sd = SortDict([1,2,3,4], [1.0, 2.0, 3.0, 4.0])
 	assert(sum(sd) == 10.0, "general iterator broken")
 	
-	println("Passed basic sanity tests. But remember, that doesn't mean a thing.")
+	println("\nPassed basic sanity tests.")
 end
 
 
@@ -158,7 +158,7 @@ function test_del_rand_order(n)
 		shuffle!(a)
 		b = Any[]
 		for x in a 
-			push(b, del(sd, x)[KEY])
+			push(b, del_kv(sd, x)[KEY])
 			assert (isvalid(sd), "tree invalid after delete")
 		end
 		sort!(a)
@@ -176,7 +176,7 @@ function test_del_first(n)
 		sd = SortDict(a,a)
 		b = Any[]
 		for x in a 
-			push(b, del_first(sd)[KEY])
+			push(b, del_first_kv(sd)[KEY])
 			assert (isvalid(sd), "tree invalid after del_first")
 		end
 		assert (isequal(a, b), "result not sorted")
@@ -191,7 +191,7 @@ function test_del_last(n)
 		sd = SortDict(a,a)
 		b = Any[]
 		for x in a 
-			enqueue(b, del_last(sd)[KEY])
+			enqueue(b, del_last_kv(sd)[KEY])
 			assert (isvalid(sd), "tree invalid after del_last")
 		end
 		assert (isequal(a, b), "result not sorted")
@@ -227,7 +227,7 @@ function test_rank_and_select(n)
 	sd = SortDict(ks, ks)
 	for x in ks
 		assert(rank(sd, x) == ifloor(x), "rank broken")
-		assert(select(sd, ifloor(x))[KEY] == x, "select broken")
+		assert(select_kv(sd, ifloor(x))[KEY] == x, "select broken")
 	end
 	return "OK"
 end 
@@ -238,7 +238,7 @@ function test_basic_lookup(n)
 	for x in ks 
 		assert(x == sd[x], "single element ref broken") 
 		assert(x == get(sd, x, 9999), "get broken") 
-		assert((x, x) == getkv(sd, x, 9999), "getkv broken") 
+		assert((x, x) == get_kv(sd, x, 9999), "getkv broken") 
 		assert(has(sd, x), "has broken") 
 	end
 	return "OK"

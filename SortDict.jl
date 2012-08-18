@@ -1,44 +1,45 @@
 
 # TODO:
+#
 # work out system of exceptions
 # learn and use macros to reduce code
-# more sanity tests, add performance tests to find good values for algorithm choice
-# set difference, symmetric difference
+# more sanity tests, add performance tests
+# add del_left(sd, n) or similar (drop several keys at once in log time
 # refs with range and vector? problematic: semantic mix of keys and indexes
-# improve union to use intelligent destructive split! -> merge intersection -> join!. 
-# more constructors... Harder than it should be!
-# floor, ceil (to work on ranks, not keys), (but one can just use select and before/after)
-# * isless(x, y)
+# ? isless(x, y)
 # ? convert(type, x)
-# * probably should have WeakKeySort
-# * add(collection, key) ... hmmmm
-# * choose(s) ...hmmmmmmmmm just use shift?
 # ? reverse. possible but clumsy
 # ? Memory-mapped I/O ?
 # ? Parallel/Distributed trees?
 # constructor that sorts?
 
-#module AVL
+#import AVL.*
 
-#import Base.*
+module SORTDICT
 
-require("AVLbase.jl")
-require("AVLutil.jl")
-require("AVLset_ops.jl") 
-require("AVLorder.jl")
-require("AVLiter.jl")
-
-# export SortDict, copy, deeper_copy, isequal, ==, keys, values, flatten
-# export isempty, length, numel, issorted, 
-# export show
-# export assign, has, get, shift or del_left, pop or del_right, del, del_all, del_any
-# export first, last, before, after, rank, select
-# export valid
-# export union, intersect, difference, join!, split!
-# export Goright, Gorightkv, Goleft, Goleftkv
+import Base.*
+export KEY, VALUE
+export SortDict, copy, deeper_copy, isequal, keys, values, flatten
+export isempty, length, numel, issorted
+export show
+export map, map!
+export assign, has, get, getkv, shift, del_first, pop, del_last, del, del_all, del_any
+export first, last, before, after, rank, select
+export isvalid
+export union, intersect, difference, join!, split!
+export Goright, Gorightkv, Goleft, Goleftkv
 
 
-# SortDict() = SortDict(nil(Any,Any), isless) # stil doesn't work
+include("AVL.jl")
+include("iter.jl")
+include("order.jl")
+include("util.jl")
+include("set_ops.jl")
+include("basics.jl")
+
+
+
+
 
 SortDict{K, V}(ks :: Vector{K}, vs :: Vector{V}) = SortDict(ks, vs, isless)
 SortDict(K :: Type, V :: Type) = SortDict{K, V} (nil(K, V), isless)
@@ -52,6 +53,43 @@ function SortDict{K, V} (ks :: Vector{K}, vs :: Vector{V}, cf :: Function)
 	tree = build(ks, vs)
 	return SortDict(tree, cf)
 end
+
+function ks_vs(kvs :: Array{Tuple, 1})
+	K = None
+	V = None
+	for (k, v) in kvs
+		K = promote_type(K, typeof(k))
+		V = promote_type(V, typeof(v))
+	end
+	len = length(kvs)
+	ks = Array(K, len)
+	vs = Array(V, len)
+	i = 1
+	for (k, v) in kvs
+		ks[i] = k 
+		vs[i] = v
+		i += 1
+	end
+	(ks, vs)
+end
+
+SortDict (kvs :: Array{Tuple, 1}) = (((ks, vs) = KV(kvs)); SortDict(ks, vs))
+SortDict (kvs :: Array{Tuple, 1}, cf :: Function) = ((ks, vs) = KV(kvs); (SortDict(ks, vs), cf))
+
+ 
+function SortDict (d :: Dict)
+	len = numel(d)
+	kvs = Array(Tuple, len)
+	i = 1
+	for kv in d
+		kvs[i] = kv
+		i += 1
+	end
+	kvs = sort((a,b) -> (isless(a[1], b[1])), kvs)
+	ks, vs = ks_vs(kvs)
+	SortDict(ks, vs)
+end
+
 
 eltype{K, V}(sd :: SortDict{K, V}) = (K, V)
 
@@ -107,38 +145,6 @@ function map{K, V}(fn :: Function, sd :: SortDict{K, V})
 	SortDict(map(fn, sd.tree), sd.cf)
 end		
 
-function split!{K, V} (sd :: SortDict{K, V}, key :: K) 
-	t1, t2, mid = tsplit(sd.tree, key, sd.cf)
-	if mid != nothing
-		# what to do with that extra element? I'll just insert it in t2 for now
-		f, c, t2 = assign(t2, mid[KEY], mid[VALUE], sd.cf)
-	end
-	return SortDict(t1, sd.cf), SortDict(t2, sd.cf)
-end
-
-
-# all of sd1's keys must be less than all of sd2's keys
-# note: destructive to the tree with the 'highest' values (when using isless as compare function)
-function join!{K, V} (sd1 :: SortDict{K, V}, sd2 :: SortDict{K, V}) 
-	cf = sd1.cf
-	if cf != sd2.cf
-		throw ("SortDicts to be joined must have the same compare functions")
-	elseif isempty(sd1)# 
-		return sd2 #
-	elseif isempty(sd2)# oh, well
-		return sd1 #
-	elseif cf(first(sd2), last(sd1))
-		sd1, sd2 = sd2, sd1
-	end
-	if !cf(last(sd1), first(sd2))
-	     throw ("join: keys must not overlap")
-	end
-	key = shift(sd2)
-	node = tjoin(sd1.tree, key, sd2.tree)
-	del_all(sd2) # hopefully this is less confusing than keeping sd2 with one node missing
-	return SortDict(node, cf)
-end
-
 first{K, V} (sd :: SortDict{K, V}) = first(sd.tree)
  
 last{K, V} (sd :: SortDict{K, V}) = last(sd.tree)
@@ -170,7 +176,7 @@ end
 
 
 # Check three main properties of sortdict
-function valid{K,V}(sd :: SortDict{K,V}) 
+function isvalid{K,V}(sd :: SortDict{K,V}) 
 	v_avl = valid_avl(sd.tree)[1]
 	v_count = valid_count(sd.tree)[1]
 	v_set = valid_sort(sd.tree, sd.cf)
@@ -216,28 +222,21 @@ function del_last{K, V} (sd :: SortDict{K, V})
 end
 pop{K, V}(sd :: SortDict{K, V}) = del_last(sd)
 
-function del_extreme{K, V} (sd :: SortDict{K, V}, side :: Bool) 
-	if length(sd.tree) == 0
-		throw("Cannot delete from empty SortDict")
-	end
-	f, c, out, sd.tree = del_ultra(sd.tree, side + 1)
-	out
-end
-
-
 function del{K, V} (sd :: SortDict{K, V}, key :: K)
 	f, c, out, sd.tree = del(sd.tree, key, sd.cf)
 	out
 end
 
-function del_any{K, V} (sd :: SortDict{K, V}, key :: K, default)
-	f, c, out, sd.tree = del_any(sd.tree, key, default, sd.cf)
+function del{K, V} (sd :: SortDict{K, V}, key :: K, default)
+	f, c, out, sd.tree = del(sd.tree, key, default, sd.cf)
 	out
 end
 
 has{K, V} (sd :: SortDict{K, V}, key :: K) = has(sd.tree, key, sd.cf)
+contains{K, V} (sd :: SortDict{K, V}, key :: K) = has(sd.tree, key, sd.cf)
 
 get{K, V} (sd :: SortDict{K, V}, key :: K, default :: V) = get(sd.tree, key, default, sd.cf)
+getkv{K, V} (sd :: SortDict{K, V}, key :: K, default :: V) = getkv(sd.tree, key, default, sd.cf)
 
 range{K, V} (sd :: SortDict{K, V}, key1 :: K, key2 :: K) = range(sd.tree, key1, key2, sd.cf)
 
@@ -251,73 +250,61 @@ before{K, V} (sd :: SortDict{K, V}, key :: K) = before(sd.tree, key, sd.cf)
 
 after{K, V} (sd :: SortDict{K, V}, key :: K) = after(sd.tree, key, sd.cf)
 
-function union {K, V} (sd1 :: SortDict{K, V}, sd2 :: SortDict{K, V})
+function split!{K, V} (sd :: SortDict{K, V}, key :: K) 
+	sd.tree, t2, mid = tsplit(sd.tree, key, sd.cf)
+	if mid != nothing
+		# what to do with that extra element? I'll just insert it in t2 for now
+		f, c, t2 = assign(t2, mid[KEY], mid[VALUE], sd.cf)
+	end
+	return SortDict(t2, sd.cf)
+end
+
+
+# all of sd1's keys must be less than all of sd2's keys
+# note: destructive to the tree with the 'highest' values (when using isless as compare function)
+function join!{K, V} (sd1 :: SortDict{K, V}, sd2 :: SortDict{K, V}) 
+	cf = sd1.cf
+	if cf != sd2.cf
+		throw ("join!: SortDicts must have the same compare functions")
+	elseif isempty(sd1)
+		sd1.tree = sd2.tree 
+		del_all(sd2)
+		return sd1
+	elseif isempty(sd2)
+		return sd1
+	elseif cf(first(sd2), last(sd1))
+		throw ("join!: SortDicts not ordered by compare function")
+	end
+	if !cf(last(sd1), first(sd2))
+	     throw ("join!: keys must not overlap")
+	end
+	key = shift(sd2)
+	sd1.tree = tjoin(sd1.tree, key, sd2.tree)
+	del_all(sd2) # hopefully this is less confusing than keeping sd2 with one node missing
+	return sd1
+end
+
+function union{K, V} (sd1 :: SortDict{K, V}, sd2 :: SortDict{K, V})
 	if sd1.cf != sd2.cf 
 		throw ("union: non-identical compare functions")
 	end
 	SortDict(union_linear(sd1.tree, sd2.tree, sd1.cf), sd1.cf)
 end
 
-const UNION_RATIO = 1.0
-
-function union!{K, V} (sd1 :: SortDict{K, V}, sd2 :: SortDict{K, V})
-	if sd1.cf != sd2.cf 
-		throw ("union: non-identical compare functions")
-	end
-	if length(sd1) < length(sd2)
-		sd1, sd2 = sd2, sd1
-	end
-	n = length(sd1)
-	m = length(sd2)
-	if UNION_RATIO * n < m * log2(n)
-		SortDict(union_linear(sd1.tree, sd2.tree, sd1.cf), sd1.cf)
-	else
-		SortDict(union_mlogn(sd1.tree, sd2.tree, sd1.cf), sd1.cf)
-	end
-end
-
-
-const INTERSECT_RATIO = 1.0
 function intersect {K, V} (sd1 :: SortDict{K, V}, sd2 :: SortDict{K, V}) 
 	if sd1.cf != sd2.cf 
 		throw ("intersect: non-identical compare functions")
 	end
-	if length(sd1) < length(sd2)
-		sd1, sd2 = sd2, sd1
-	end
-	
-	n = length(sd1)
-	m = length(sd2)
-
-	if INTERSECT_RATIO * n < m * log2(n)
-		SortDict(intersect_linear(sd1.tree, sd2.tree, sd1.cf), sd1.cf)
-	else
-		SortDict(intersect_mlogn(sd1.tree, sd2.tree, sd1.cf), sd1.cf)
-	end
+	SortDict(intersect_linear(sd1.tree, sd2.tree, sd1.cf), sd1.cf)
 end
 
 
-const DIFF_RATIO = 1.0
 function difference {K, V} (sd1 :: SortDict{K, V}, sd2 :: SortDict{K, V}) 
-	if sd1.cf != sd2.cf 
-		throw ("difference: non-identical compare functions")
-	end
-	if length(sd1) < length(sd2)
-		sd1, sd2 = sd2, sd1
-	end
-	
-	n = length(sd1)
-	m = length(sd2)
-
-	if DIFF_RATIO * (n + m) < n * log2(m)
-		SortDict(diff_linear(sd1.tree, sd2.tree, sd1.cf), sd1.cf)
-	else
-		SortDict(diff_nlogm(sd1.tree, sd2.tree, sd1.cf), sd1.cf)
-	end
+	SortDict(diff_linear(sd1.tree, sd2.tree, sd1.cf), sd1.cf)
 end
 
 
-#end # module
+end # module
 
 
 

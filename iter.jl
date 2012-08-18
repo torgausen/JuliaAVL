@@ -1,4 +1,5 @@
-require ("AVLbase.jl")
+
+
 
 type Goright{K, V}
 	node :: Node{K, V}
@@ -42,7 +43,6 @@ end
 
 
 function start_right{K, V} (node :: Avl{K, V}) 
-#	println("Fast Start Right cstr")
  	stack = Array(Node{K, V}, 0)
 	while notempty(node)
 		push(stack, node)
@@ -52,7 +52,6 @@ function start_right{K, V} (node :: Avl{K, V})
 end
 
 function start_left{K, V} (node :: Avl{K, V}) 
-#	println("Fast Start Left cstr")
  	stack = Array(Node{K, V}, 0)
 	while notempty(node)
 		push(stack, node)

@@ -67,52 +67,6 @@ function intersect_linear{K, V}(n1 :: Avl{K, V}, n2 :: Avl{K, V}, cf :: Function
 	build(a[1 : dst], av[1 : dst])
 end
 
-intersect_mlogn{K, V} (big :: Nil{K, V}, small :: Nil{K, V}, cf :: Function) = big
-intersect_mlogn{K, V} (big :: Node{K, V}, small :: Nil{K, V}, cf :: Function) = small
-intersect_mlogn{K, V} (big :: Nil{K, V}, small :: Node{K, V}, cf :: Function) = big
-function intersect_mlogn{K, V} (big :: Node{K, V}, small :: Node{K, V}, cf :: Function)
-	ks = K[]
-	vs = V[]
-	for (key, value) in Gorightkv_fast(small)
-		if has(big, key, cf)
-			push(ks, key)
-			push(vs, value)
-		end
-	end
-	build(ks, vs)
-end
- 
-# destroys t1
-# called if small t2 (m)
-function diff_mlogn!{K, V} (t1 :: Node{K, V}, t2 :: Node{K, V}, cf :: Function)
-	rec{K, V}(node :: Nil{K, V}) = return
-	function rec{K, V}(node :: Node{K, V})
-		println(node.key)
-		f, c, rv, t1 = del(t1, node.key, nothing, cf)
-		rec(node.child[LEFT])
-		rec(node.child[RIGHT])
-	end
-	t2 = copy(t2)
-	rec(t2)
-	t1
-end
-
-# if small t1 (n)
-function diff_nlogm{K, V} (t1 :: Node{K, V}, t2 :: Node{K, V}, cf :: Function) 
-	ks, vs = flatten(t1)
-	s = 1
-	d = 0
-	while s <= length(ks)
-		if !has(t2, ks[s], cf)
-			d += 1
-			ks[d] = ks[s]
-			vs[d] = vs[s]
-		end
-		s += 1
-	end
-	build(ks[1 : d], vs[1 : d])
-end
-
 diff_linear{K, V} (t1 :: Nil{K, V}, t2 :: Avl{K, V}, cf :: Function) = t1
 diff_linear{K, V} (t1 :: Node{K, V}, t2 :: Nil{K, V}, cf :: Function) = t1
 function diff_linear{K, V} (t1 :: Node{K, V}, t2 :: Node{K, V}, cf :: Function)

@@ -1,31 +1,14 @@
 
-# TODO:
-#
-# work out system of exceptions
-# learn and use macros to reduce code
-# firstkv, lastkv argh
-# more sanity tests, add performance tests
-# add del_left(sd, n) or similar (drop several keys at once in log time
-# refs with range and vector? problematic: semantic mix of keys and indexes
-# ? isless(x, y)
-# ? convert(type, x)
-# ? reverse. possible but clumsy
-# ? Memory-mapped I/O ?
-# ? Parallel/Distributed trees?
-# constructor that sorts?
-
-#import AVL.*
-
-module SORTDICT
-
+module SortDict
 import Base.*
+
 export KEY, VALUE
-export SortDict, copy, deeper_copy, isequal, keys, values, flatten
+export SDict, copy, deeper_copy, isequal, keys, values, flatten
 export isempty, length, numel, issorted
 export show
 export map, map!
 export assign, has, get, get_kv, shift, del_first, del_first_kv, pop, del_last, del_last_kv, del, del_kv, del_all
-export first, first_kv, last, last_kv, before, before_kv, after, after_kv, rank, select, select_kv
+export first, first_kv, last, last_kv, before, before_kv, after, after_kv, rank, select, select_kv, range, range_kv
 export isvalid
 export union, intersect, difference, join!, split!, split_left!
 export Goright, Goright_kv, Goleft, Goleft_kv
@@ -38,18 +21,18 @@ include("set_ops.jl")
 include("basics.jl")
 
 
-SortDict{K, V}(ks :: Vector{K}, vs :: Vector{V}) = SortDict(ks, vs, isless)
+SDict{K, V}(ks :: Vector{K}, vs :: Vector{V}) = SDict(ks, vs, isless)
 
-SortDict(K :: Type, V :: Type) = SortDict{K, V} (nil(K, V), isless)
+SDict(K :: Type, V :: Type) = SDict{K, V} (nil(K, V), isless)
 
-function SortDict{K, V} (ks :: Vector{K}, vs :: Vector{V}, cf :: Function)
+function SDict{K, V} (ks :: Vector{K}, vs :: Vector{V}, cf :: Function)
 	if ! issortedset(ks, cf)
-		throw ("SortDict constructor: keys must form a sorted set")
+		throw ("SDict constructor: keys must form a sorted set")
 	elseif length(ks) != length(vs)
-		throw ("SortDict constructor: key vector and value vector must have same length")
+		throw ("SDict constructor: key vector and value vector must have same length")
 	end
 	tree = build(ks, vs)
-	return SortDict(tree, cf)
+	return SDict(tree, cf)
 end
 
 function ks_vs(kvs :: Array{Tuple, 1})
@@ -71,15 +54,13 @@ function ks_vs(kvs :: Array{Tuple, 1})
 	(ks, vs)
 end
 
-SortDict (kvs :: Array{Tuple, 1}) = (((ks, vs) = ks_vs(kvs)); SortDict(ks, vs))
-SortDict (kvs :: Array{Tuple, 1}, cf :: Function) = ((ks, vs) = KV(kvs); (SortDict(ks, vs), cf))
+SDict (kvs :: Array{Tuple, 1}) = (((ks, vs) = ks_vs(kvs)); SDict(ks, vs))
 
+SDict (kvs :: Array{Tuple, 1}, cf :: Function) = ((ks, vs) = KV(kvs); (SDict(ks, vs), cf))
  
-function SortDict (d :: Dict)
-	SortDict(d, isless)
-end
+SDict (d :: Dict) = SDict(d, isless)
 
-function SortDict (d :: Dict, cf :: Function)
+function SDict (d :: Dict, cf :: Function)
 	len = numel(d)
 	kvs = Array(Tuple, len)
 	i = 1
@@ -89,39 +70,40 @@ function SortDict (d :: Dict, cf :: Function)
 	end
 	kvs = sort((a,b) -> (cf(a[1], b[1])), kvs)
 	ks, vs = ks_vs(kvs)
-	SortDict(ks, vs, cf)
+	SDict(ks, vs, cf)
 end
 
+eltype{K, V}(sd :: SDict{K, V}) = (K, V)
 
-eltype{K, V}(sd :: SortDict{K, V}) = (K, V)
+isempty (sd :: SDict) = isempty(sd.tree)
 
-isempty (sd :: SortDict) = isempty(sd.tree)
+length{K, V}(sd :: SDict{K, V}) = length(sd.tree)
 
-length{K, V}(sd :: SortDict{K, V}) = length(sd.tree)
-numel{K, V}(sd :: SortDict{K, V}) = length(sd.tree)
+numel{K, V}(sd :: SDict{K, V}) = length(sd.tree)
 
 #shallow copy
-copy{K,V}(sd :: SortDict{K,V}) = SortDict(copy(sd.tree), sd.cf)
+copy{K,V}(sd :: SDict{K,V}) = SDict(copy(sd.tree), sd.cf)
 
 # deeper than shallow copy, but keys and values are just copies, not deep copies
-deeper_copy{K, V}(sd :: SortDict{K,V}) = SortDict(deeper_copy(sd.tree), sd.cf)
+deeper_copy{K, V}(sd :: SDict{K,V}) = SDict(deeper_copy(sd.tree), sd.cf)
 
 # get tupple of two arrays: keys and values
-flatten{K, V}(sd :: SortDict{K,V}) = flatten(sd.tree)
+flatten{K, V}(sd :: SDict{K,V}) = flatten(sd.tree)
 
-keys{K, V}(sd :: SortDict{K, V}) = flatten(sd)[KEY]
+keys{K, V}(sd :: SDict{K, V}) = flatten(sd)[KEY]
 
-values{K, V}(sd :: SortDict{K, V}) = flatten(sd)[VALUE]
+values{K, V}(sd :: SDict{K, V}) = flatten(sd)[VALUE]
 
-isequal{K,V}(sda :: SortDict{K, V}, sdb :: SortDict{K, V}) = (sda.cf == sdb.cf && isequal(sda.tree, sdb.tree, sda.cf))
+isequal{K, V}(sda :: SDict{K, V}, sdb :: SDict{K, V}) = (sda.cf == sdb.cf && isequal(sda.tree, sdb.tree, sda.cf))
 
-del_all{K, V}(sd :: SortDict{K, V}) = (sd.tree = nil(K, V); sd)
+isless{K, V}(sda :: SDict{K, V}, sdb :: SDict{K, V}) = (sda.cf == sdb.cf && isless(last(sda), first(sdb)))
 
+del_all{K, V}(sd :: SDict{K, V}) = (sd.tree = nil(K, V); sd)
 
-# stolen from dict.jl ;)
-function show{K, V}(io, sd::SortDict{K, V})
+# Karpinski-inherited from dict.jl ;)
+function show{K, V}(io, sd::SDict{K, V})
 	if isempty(sd)
-		print(io, "SortDict($K, $V)")
+		print(io, "SDict($K, $V)")
 	else
 	print(io, "{")
 	fst = true
@@ -136,24 +118,24 @@ function show{K, V}(io, sd::SortDict{K, V})
 	end
 end
 
-issorted(sd :: SortDict) = true
+issorted(sd :: SDict) = true
 
-function map!{K, V}(fn :: Function, sd :: SortDict{K, V})
+function map!{K, V}(fn :: Function, sd :: SDict{K, V})
 	sd.tree = map!(fn, sd.tree)
 	sd
 end		
 
-function map{K, V}(fn :: Function, sd :: SortDict{K, V})
-	SortDict(map(fn, sd.tree), sd.cf)
+function map{K, V}(fn :: Function, sd :: SDict{K, V})
+	SDict(map(fn, sd.tree), sd.cf)
 end		
 
-first{K, V} (sd :: SortDict{K, V}) = first(sd.tree)[VALUE]
+first{K, V} (sd :: SDict{K, V}) = first(sd.tree)[VALUE]
  
-first_kv{K, V} (sd :: SortDict{K, V}) = first(sd.tree)
+first_kv{K, V} (sd :: SDict{K, V}) = first(sd.tree)
  
-last{K, V} (sd :: SortDict{K, V}) = last(sd.tree)[VALUE]
+last{K, V} (sd :: SDict{K, V}) = last(sd.tree)[VALUE]
 
-last_kv{K, V} (sd :: SortDict{K, V}) = last(sd.tree)
+last_kv{K, V} (sd :: SDict{K, V}) = last(sd.tree)
 
 first_kv{K, V}(node :: Nil{K, V}, n :: Integer) = Array((K, V), 0)
 function first_kv{K, V}(node :: Node{K, V}, n :: Integer)
@@ -199,117 +181,119 @@ function last{K, V}(node :: Node{K, V}, n :: Integer)
 	rtn
 end
 
-
-
 # Check three main properties of sortdict
-function isvalid{K,V}(sd :: SortDict{K,V}) 
+function isvalid{K,V}(sd :: SDict{K,V}) 
 	v_avl = valid_avl(sd.tree)[1]
 	v_count = valid_count(sd.tree)[1]
 	v_set = valid_sort(sd.tree, sd.cf)
 	return v_avl && v_count && v_set
 end
 
-function ref{K, V}(sd :: SortDict{K, V}, key :: K)
+function ref{K, V}(sd :: SDict{K, V}, key :: K)
 	ref(sd.tree, key, sd.cf)
 end 
 
 # returns an array
-function ref{K, V} (sd :: SortDict{K, V}, ind :: Range1{K}) 
-	range(sd.tree, first(ind), last(ind), sd.cf)
+function ref{K, V} (sd :: SDict{K, V}, ind :: Range1{K}) 
+	ref(sd.tree, first(ind), last(ind), sd.cf)
 end 
 
-function assign{K, V}(sd :: SortDict{K, V}, value :: V, key :: K) 
-	h, c, sd.tree = assign(sd.tree, key, value, sd.cf)
+function assign{K, V}(sd :: SDict{K, V}, value :: V, key :: K) 
+	h, c, sd.tree = assign(sd.tree, convert(K, key), convert(V, value), sd.cf)
 end
 
-function shift{K, V} (sd :: SortDict{K, V})
+function shift{K, V} (sd :: SDict{K, V})
 	if length(sd.tree) == 0
-		throw("Cannot shift empty SortDict")
+		throw("Cannot shift empty SDict")
 	end
 	f, c, out, sd.tree = del_first(sd.tree)
 	out
 end
 
-function del_first_kv{K, V} (sd :: SortDict{K, V})
+function del_first_kv{K, V} (sd :: SDict{K, V})
 	if length(sd.tree) == 0
-		throw("Cannot shift empty SortDict")
+		throw("Cannot shift empty SDict")
 	end
 	f, c, out, sd.tree = del_first(sd.tree)
 	out
 end
-del_first{K, V} (sd :: SortDict{K, V}) = del_first_kv[VALUE]
-shift{K, V} (sd :: SortDict{K, V}) = del_first(sd)
+del_first{K, V} (sd :: SDict{K, V}) = del_first_kv[VALUE]
+shift{K, V} (sd :: SDict{K, V}) = del_first(sd)
 
-function del_last_kv{K, V} (sd :: SortDict{K, V}) 
+function del_last_kv{K, V} (sd :: SDict{K, V}) 
 	if length(sd.tree) == 0
-		throw("Cannot pop empty SortDict")
+		throw("Cannot pop empty SDict")
 	end
 	f, c, out, sd.tree = del_last(sd.tree)
 	out
 end
-del_last{K, V} (sd :: SortDict{K, V}) = del_last_kv[VALUE]
-pop{K, V}(sd :: SortDict{K, V}) = del_last(sd)
+del_last{K, V} (sd :: SDict{K, V}) = del_last_kv[VALUE]
+pop{K, V}(sd :: SDict{K, V}) = del_last(sd)
 
-function del_kv{K, V} (sd :: SortDict{K, V}, key :: K)
+function del_kv{K, V} (sd :: SDict{K, V}, key :: K)
 	f, c, out, sd.tree = del(sd.tree, key, sd.cf)
 	out
 end
-del{K, V} (sd :: SortDict{K, V}, key :: K) = del_kv(sd, key)[VALUE]
+del{K, V} (sd :: SDict{K, V}, key :: K) = del_kv(sd, key)[VALUE]
 
-function del_kv{K, V} (sd :: SortDict{K, V}, key :: K, default)
+function del_kv{K, V} (sd :: SDict{K, V}, key :: K, default)
 	f, c, out, sd.tree = del(sd.tree, key, default, sd.cf)
 	out
 end
-del{K, V} (sd :: SortDict{K, V}, key :: K, default) = del_kv(sd, key, default)[VALUE]
+del{K, V} (sd :: SDict{K, V}, key :: K, default) = del_kv(sd, key, default)[VALUE]
 
-has{K, V} (sd :: SortDict{K, V}, key :: K) = has(sd.tree, key, sd.cf)
-contains{K, V} (sd :: SortDict{K, V}, key :: K) = has(sd.tree, key, sd.cf)
+has{K, V} (sd :: SDict{K, V}, key :: K) = has(sd.tree, key, sd.cf)
+contains{K, V} (sd :: SDict{K, V}, key :: K) = has(sd.tree, key, sd.cf)
 
-get{K, V} (sd :: SortDict{K, V}, key :: K, default :: V) = get_kv(sd.tree, key, default, sd.cf)[VALUE]
+get{K, V} (sd :: SDict{K, V}, key :: K, default :: V) = get(sd.tree, key, default, sd.cf)
 
-get_kv{K, V} (sd :: SortDict{K, V}, key :: K, default :: V) = get_kv(sd.tree, key, default, sd.cf)
+get_kv{K, V} (sd :: SDict{K, V}, key :: K, default :: V) = get_kv(sd.tree, key, default, sd.cf)
 
-range_kv{K, V} (sd :: SortDict{K, V}, key1 :: K, key2 :: K) = range(sd.tree, key1, key2, sd.cf)
+ref(sd :: SDict, rng :: Range1) = range_kv(sd.tree, first(rng), last(rng), sd.cf)
 
-rank{K, V} (sd :: SortDict{K, V}, key :: K) = rank(sd.tree, key, sd.cf) + 1
+range_kv{K, V} (sd :: SDict{K, V}, key1 :: K, key2 :: K) = range_kv(sd.tree, key1, key2, sd.cf)
 
-select_kv{K, V} (sd :: SortDict{K, V}, ind :: Int) = select(sd.tree, ind - 1)
+range{K, V} (sd :: SDict{K, V}, key1 :: K, key2 :: K) = range(sd.tree, key1, key2, sd.cf)
 
-select{K, V} (sd :: SortDict{K, V}, ind :: Int) = select(sd.tree, ind - 1)[VALUE]
+rank{K, V} (sd :: SDict{K, V}, key :: K) = rank(sd.tree, key, sd.cf) + 1
+
+select_kv{K, V} (sd :: SDict{K, V}, ind :: Int) = select(sd.tree, ind - 1, 0)
+
+select{K, V} (sd :: SDict{K, V}, ind :: Int) = select(sd.tree, ind - 1, 0)[VALUE]
 
 # keyselect (range) 3 variants: upto k, between k1, k2, from k, but these can be accessed with refs
 
-before_kv{K, V} (sd :: SortDict{K, V}, key :: K) = before(sd.tree, key, sd.cf)
-before{K, V} (sd :: SortDict{K, V}, key :: K) = before(sd.tree, key, sd.cf)[VALUE]
+before_kv{K, V} (sd :: SDict{K, V}, key :: K) = before(sd.tree, key, sd.cf)
+before{K, V} (sd :: SDict{K, V}, key :: K) = before(sd.tree, key, sd.cf)[VALUE]
 
-after_kv{K, V} (sd :: SortDict{K, V}, key :: K) = after(sd.tree, key, sd.cf)
-before{K, V} (sd :: SortDict{K, V}, key :: K) = before(sd.tree, key, sd.cf)[VALUE]
+after_kv{K, V} (sd :: SDict{K, V}, key :: K) = after(sd.tree, key, sd.cf)
+after{K, V} (sd :: SDict{K, V}, key :: K) = after(sd.tree, key, sd.cf)[VALUE]
 
-function split!{K, V} (sd :: SortDict{K, V}, key :: K) 
+function split!{K, V} (sd :: SDict{K, V}, key :: K) 
 	sd.tree, t2, mid = tsplit(sd.tree, key, sd.cf)
 	if mid != nothing
 		# what to do with that extra element? I'll just insert it in t2 for now
 		f, c, t2 = assign(t2, mid[KEY], mid[VALUE], sd.cf)
 	end
-	return SortDict(t2, sd.cf)
+	return SDict(t2, sd.cf)
 end
 
-function split_left!{K, V} (sd :: SortDict{K, V}, key :: K) 
+function split_left!{K, V} (sd :: SDict{K, V}, key :: K) 
 	t2, sd.tree, mid = tsplit(sd.tree, key, sd.cf)
 	if mid != nothing
 		# what to do with that extra element? I'll just insert it in t2 for now
 		f, c, t2 = assign(t2, mid[KEY], mid[VALUE], sd.cf)
 	end
-	return SortDict(t2, sd.cf)
+	return SDict(t2, sd.cf)
 end
 
 
 # all of sd1's keys must be less than all of sd2's keys
 # note: destructive to the tree with the 'highest' values (when using isless as compare function)
-function join!{K, V} (sd1 :: SortDict{K, V}, sd2 :: SortDict{K, V}) 
+function join!{K, V} (sd1 :: SDict{K, V}, sd2 :: SDict{K, V}) 
 	cf = sd1.cf
 	if cf != sd2.cf
-		throw ("join!: SortDicts must have the same compare functions")
+		throw ("join!: SDicts must have the same compare functions")
 	elseif isempty(sd1)
 		sd1.tree = sd2.tree 
 		del_all(sd2)
@@ -317,7 +301,7 @@ function join!{K, V} (sd1 :: SortDict{K, V}, sd2 :: SortDict{K, V})
 	elseif isempty(sd2)
 		return sd1
 	elseif cf(first_kv(sd2), last_kv(sd1))
-		throw ("join!: SortDicts not ordered by compare function")
+		throw ("join!: SDicts not ordered by compare function")
 	end
 	if !cf(last_kv(sd1), first_kv(sd2))
 	     throw ("join!: keys must not overlap")
@@ -328,25 +312,22 @@ function join!{K, V} (sd1 :: SortDict{K, V}, sd2 :: SortDict{K, V})
 	return sd1
 end
 
-function union{K, V} (sd1 :: SortDict{K, V}, sd2 :: SortDict{K, V})
+function union{K, V} (sd1 :: SDict{K, V}, sd2 :: SDict{K, V})
 	if sd1.cf != sd2.cf 
 		throw ("union: non-identical compare functions")
 	end
-	SortDict(union_linear(sd1.tree, sd2.tree, sd1.cf), sd1.cf)
+	SDict(union_linear(sd1.tree, sd2.tree, sd1.cf), sd1.cf)
 end
 
-
-
-function intersect {K, V} (sd1 :: SortDict{K, V}, sd2 :: SortDict{K, V}) 
+function intersect {K, V} (sd1 :: SDict{K, V}, sd2 :: SDict{K, V}) 
 	if sd1.cf != sd2.cf 
 		throw ("intersect: non-identical compare functions")
 	end
-	SortDict(intersect_linear(sd1.tree, sd2.tree, sd1.cf), sd1.cf)
+	SDict(intersect_linear(sd1.tree, sd2.tree, sd1.cf), sd1.cf)
 end
 
-
-function difference {K, V} (sd1 :: SortDict{K, V}, sd2 :: SortDict{K, V}) 
-	SortDict(diff_linear(sd1.tree, sd2.tree, sd1.cf), sd1.cf)
+function difference {K, V} (sd1 :: SDict{K, V}, sd2 :: SDict{K, V}) 
+	SDict(diff_linear(sd1.tree, sd2.tree, sd1.cf), sd1.cf)
 end
 
 

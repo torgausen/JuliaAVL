@@ -29,7 +29,7 @@ abstract Avl{K, V}
 
 abstract Associative{K, V}
 
-type SortDict{K, V} <: Associative{K, V}
+type SDict{K, V} <: Associative{K, V}
 	tree :: Avl{K, V}
 	cf :: Function # compare function
 end
@@ -54,6 +54,7 @@ function Node{K, V}(key :: K, value :: V)
 	node.child = [nil(K, V), nil(K, V)]
 	return node
 end
+
 # shallow copy
 copy{K, V}(node :: Nil{K, V}) = node
 function copy{K, V}(node :: Node{K, V}) 
@@ -75,7 +76,6 @@ function deeper_copy{K, V}(node :: Node{K, V})
 	out.bal = node.bal
 	out
 end
-
 
 isempty (node :: Avl) = isa(node, Nil)
 notempty (node :: Avl) = isa(node, Node)
@@ -462,7 +462,7 @@ end
 # a number is followed by '-', "", or '+' indicates count and balance factors
 # below is either a key or key, value pair, according to show_values bool parameter
 
-function draw(node, show_values, show_counts, screen_cols)
+function draw(node, show_values, show_counts)
 	function draw_rec (n, x, y, space)
 		function plot_text(str, x, y)
 			local s = text[y]
@@ -493,12 +493,12 @@ function draw(node, show_values, show_counts, screen_cols)
 	end
 	
 	text = Array(String, 0)
-	s = repeat(" ", screen_cols)
+	s = repeat(" ", tty_cols())
 	for i = 1:300
 		push(text, s)
 	end
 
-	draw_rec(node, div(screen_cols, 2), 2, div(screen_cols, 4))
+	draw_rec(node, div(tty_cols(), 2), 2, div(tty_cols(), 4))
 
 	while last(text) == s
 		pop(text)
@@ -507,10 +507,9 @@ function draw(node, show_values, show_counts, screen_cols)
 	for line in text
 		println(line)
 	end
-	println(repeat("-", screen_cols))
+	println(repeat("-", tty_cols()))
 end
-draw(node) = draw(node, false, false, 128)
-draw(node, a, b) = draw(node, a, b, 128)
+draw(node) = draw(node, false, false)
 
 
 #end # AVL

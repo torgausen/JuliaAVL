@@ -122,20 +122,20 @@ function next_right{K, V} (node :: Avl{K, V}, stack :: Vector{Node{K, V}})
 	elem, stack
 end
 
-Goright{K, V}	(sd :: SortDict{K, V}) 			= Goright_fast(sd.tree)
-Goright_kv{K, V}	(sd :: SortDict{K, V}) 			= Goright_kv_fast(sd.tree)
-Goleft{K, V}	(sd :: SortDict{K, V}) 			= Goleft_fast(sd.tree)
-Goleft_kv{K, V}	(sd :: SortDict{K, V}) 			= Goleft_kv_fast(sd.tree)
+Goright{K, V}		(sd :: SDict{K, V}) = Goright_fast(sd.tree)
+Goright_kv{K, V}	(sd :: SDict{K, V}) = Goright_kv_fast(sd.tree)
+Goleft{K, V}		(sd :: SDict{K, V}) = Goleft_fast(sd.tree)
+Goleft_kv{K, V}		(sd :: SDict{K, V}) = Goleft_kv_fast(sd.tree)
 
-Goright{K, V}	(sd :: SortDict{K, V}, key :: K) 	= Goright(sd.tree, key, sd.cf)
-Goright_kv{K, V}	(sd :: SortDict{K, V}, key :: K) 	= Goright_kv(sd.tree, key, sd.cf)
-Goleft{K, V}	(sd :: SortDict{K, V}, key :: K) 	= Goleft(sd.tree, key, sd.cf)
-Goleft_kv{K, V}	(sd :: SortDict{K, V}, key :: K) 	= Goleft_kv(sd.tree, key, sd.cf)
+Goright{K, V}	(sd :: SDict{K, V}, key :: K) 	= Goright(sd.tree, key, sd.cf)
+Goright_kv{K, V}	(sd :: SDict{K, V}, key :: K) 	= Goright_kv(sd.tree, key, sd.cf)
+Goleft{K, V}	(sd :: SDict{K, V}, key :: K) 	= Goleft(sd.tree, key, sd.cf)
+Goleft_kv{K, V}	(sd :: SDict{K, V}, key :: K) 	= Goleft_kv(sd.tree, key, sd.cf)
 
-# special case when using the SortDict itself as an iterator
-start{K, V}	(iter :: SortDict{K, V}) 				= start_right(iter.tree)
-next{K, V}	(iter :: SortDict{K, V}, stack :: Vector{Node{K, V}})	= ((elem, stack) = next_right(iter.tree, stack); (elem[VALUE], stack))
-done{K, V}	(iter :: SortDict{K, V}, stack :: Vector{Node{K, V}})	= isempty(stack)
+# special case when using the SDict itself as an iterator
+start{K, V}	(iter :: SDict{K, V}) 				= start_right(iter.tree)
+next{K, V}	(iter :: SDict{K, V}, stack :: Vector{Node{K, V}})	= ((elem, stack) = next_right(iter.tree, stack); (elem[VALUE], stack))
+done{K, V}	(iter :: SDict{K, V}, stack :: Vector{Node{K, V}})	= isempty(stack)
 
 start{K, V} (iter :: Goleft{K, V}) 		= start_left(iter.node, iter.key, iter.cf)
 start{K, V} (iter :: Goleft_kv{K, V}) 		= start_left(iter.node, iter.key, iter.cf)

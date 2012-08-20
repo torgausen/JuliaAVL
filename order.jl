@@ -1,30 +1,45 @@
 # 	functions that operate on the tree as if it was a vector
 #	or any other ordered collection
 
-ref{K,V}(node :: Nil{K, V}, rng :: Range1{K}, cf :: Function) = Array((K, V), 0)
-function ref{K, V}(node :: Node{K, V}, rng :: Range1{K})
+range_kv{K,V}(node :: Nil{K, V}, fst :: K, lst :: K, cf :: Function) = Array((K, V), 0)
+function range_kv{K, V}(node :: Node{K, V}, fst :: Integer, lst :: Integer, cf :: Function)
 	# return array of key,value pairs
-	#
-	# currently you can't assign to the tree with a range
-	# Maybe should not be exported
 	
 	out = Array((K, V), 0)
-	range(n :: Nil{K, V}) = Array((K, V), 0)
-	function range(n :: Node{K, V})
+	rec(n :: Nil{K, V}) = nothing
+	function rec(n :: Node{K, V})
 		if cf(lst, n.key)
-			range(n.child[LEFT])
+			rec(n.child[LEFT])
 		elseif cf(n.key, fst)
-			range(n.child[RIGHT])
+			rec(n.child[RIGHT])
 		else
-			range(n.child[LEFT])
+			rec(n.child[LEFT])
 			push(out, (n.key, n.value))
-			range(n.child[RIGHT])
+			rec(n.child[RIGHT])
 		end
 	end
-	fst = first(rng)
-	lst = last(rng)
+	rec(node) 
+	out
+end
+
+range{K,V}(node :: Nil{K, V}, fst :: K, lst :: K, cf :: Function) = Array((V), 0)
+function range{K, V}(node :: Node{K, V}, fst :: Integer, lst :: Integer, cf :: Function)
+	# return array values
 	
-	range(node) 
+	out = Array(V, 0)
+	rec(n :: Nil{K, V}) = nothing
+	function rec(n :: Node{K, V})
+		if cf(lst, n.key)
+			rec(n.child[LEFT])
+		elseif cf(n.key, fst)
+			rec(n.child[RIGHT])
+		else
+			rec(n.child[LEFT])
+			push(out, n.value)
+			rec(n.child[RIGHT])
+		end
+	end
+	rec(node) 
 	out
 end
 
@@ -90,20 +105,17 @@ end
 
 
 
-function select{K, V}(node :: Avl{K, V}, ind :: Real)
-	rec(n :: Nil, left :: Int) = throw("select: index $left out of range")
-	function rec(n :: Node{K, V}, left :: Int)
-		sofar = left + length(n.child[LEFT])
-		if sofar == ind
-			return (n.key, n.value)
-		elseif sofar < ind
-			return rec(n.child[RIGHT], sofar + 1)
-		else
-			return rec(n.child[LEFT], left)
-		end
-	end	
-	rec(node, 0)
-end
+select{K, V}(n :: Nil, ind :: Int, left :: Int) = throw("select: index $left out of range")
+function select{K, V}(n :: Node{K, V}, ind :: Int, left :: Int)
+	sofar = left + length(n.child[LEFT])
+	if sofar == ind
+		(n.key, n.value)
+	elseif sofar < ind
+		select(n.child[RIGHT], ind, sofar + 1)
+	else
+		select(n.child[LEFT], ind, left)
+	end
+end	
 
 # if key in node, return rank, else throw key error
 function rank{K, V}(node :: Avl{K, V}, key :: K, cf :: Function)

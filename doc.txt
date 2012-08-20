@@ -5,30 +5,46 @@ Some general notes:
 1. Several functions, such as first() and after() have versions with _kv suffix that returns 
    a (key, value) tupple instead of just a value. 
    
-2. Things are still under construction and nothing is optimized yet. Performance should soon improve considerably.
+2. Nothing is optimized yet. Performance can improve considerably. 
 
 3. I Still haven't added convert calls to assignments (and elsewhere), so the types are somewhat constrained: you can make a
-   SortDict of ('Char', Float64), but not of, say, (String, Number). I think the strict types makes for easier debugging, so
-   I'd like to keep it this way at least until I have optimized the core routines.
+   SDict of ('Char', Float64), but not of, say, (String, Number). I think the strict types makes for slightly easier debugging, so
+   I'd like to keep it this way at least until I have optimized the core routines. 
 
-4. SortDict is currently implemented as an AVL tree. This may change to Red-Black or AA tree, or the choice of underlying
-   datastructure could be given to the user.
+4. SDict is currently implemented as an AVL tree. This may change to Holger's Red-Black or AA tree, or something else (skip list?) the
+   choice of underlying datastructure could perhaps be given to the user.
 
-   
-If you find any errors or have any comments, questions or suggestions, please let me know at: https://github.com/torgausen/JuliaAVL
+5. Only basic linear time set operations are included. More 'intelligent' functions could perhaps be added, but mostly users can
+   write their own functions based on requirements and knowledge of the data. 
+
+6. Exceptions are just strings. I haven't focused on this at all yet.
+
+
+If you find any errors or have any comments, questions or suggestions, please let me know: torgausen@gmail.com
+
+The repo is at https://github.com/torgausen/JuliaAVL
+
 --------------------------------------------------------------------------------------------------------------------------------------
 
+How to use:
 
-SortDict(ks, vs)
-SortDict(K, V)
-SortDict(d :: Dict)
-SortDict(a :: Tuple[])
+require("SortDict.jl") 
+import SortDict.*
+sd = SDict(Float64, Int)
+sd[1.23] = 123
 
-	Creates a new SortDict from an vector of keys and a corresponding vector of values.
+----------------------
+
+SDict(ks, vs)
+SDict(K, V)
+SDict(d :: Dict)
+SDict(a :: Tuple[])
+
+	Creates a new SDict from an vector of keys and a corresponding vector of values.
 
 	example:
 
-	sd = SortDict(
+	sd = SDict(
 		["One", "Two", "Two and a half"], 
 		[1.0, 2.0, 2.5]
 	)
@@ -36,10 +52,10 @@ SortDict(a :: Tuple[])
 	The isless comarator will be used, unless you specify your own as a third argument.
 	The keys must be sorted with no equal keys (according to the compare function used)
 
-	SortDict(K, V) creates a new empty SortDict for keys of type K, values of type V
+	SDict(K, V) creates a new empty SDict for keys of type K, values of type V
 	Values can then be assigned to keys like with a Dict(): sd[""] = "mama"
 
-	You can also make SortDicts out of Dicts or arrays of key, value tuples
+	You can also make SDicts out of Dicts or arrays of key, value tuples
 	
 eltype(sd) 
 
@@ -73,7 +89,7 @@ values(sd)
 	
 del_all(sd)
 
-	Clear the SortDict
+	Clear the SDict
 
 	
 map(fn, sd), map!(fn, sd)
@@ -86,13 +102,13 @@ Goleft
 Goright_kv
 Goleft_kv
 	
-	These are iterator constructors. You can iterate over a SortDict directly or get special iterators
+	These are iterator constructors. You can iterate over a SDict directly or get special iterators
 	that begins at given keys and go left or right. These can of course be combined with Julia's generic 
 	iterator functions.
 	
 	examples:
 	
-		sd = SortDict([1,2,3,4], [1.0, 2.0, 3.0, 4.0])
+		sd = SDict([1,2,3,4], [1.0, 2.0, 3.0, 4.0])
 
 		sum(sd) 	=> 10.0
 	
@@ -114,18 +130,24 @@ Goleft_kv
 			print(x, " ")		=> (2,2.0) (1, 1.0) 
 		end
 	
-	Time complexities for iterators are O(m + log n), where n is the size of the SortDict, m the length of the iteration run.
+	Time complexities for iterators are O(m + log n), where n is the size of the SDict, m the length of the iteration run.
 
 	
 split!(sd, key)
 
-	Returns two SortDicts sd1 and sd2.
+	Returns a SDict, sd2. 
 	
-	sd1 contains all keys up to but not including 'key', while sd2 contains the rest.
+	After the call, sd will contain all keys up to but not including 'key', while sd2 contains the rest.
 	
 	Runs in O(log n).
 	
+split_left!(sd, key)
 
+	Returns a SDict, sd2. 
+	
+	After the call, sd2 contains all keys up to but not including 'key', sd contains the rest. 
+	
+	Runs in O(log n).
 	
 join!(sd1, sd2)
 
@@ -149,7 +171,7 @@ last_kv(sd, m)
 	
 valid(sd)
 	
-	Checks that sd is actually a valid SortDict. Returns false if the datastructure is somehow corrupted.
+	Checks that sd is actually a valid SDict. Returns false if the datastructure is somehow corrupted.
 	Runs in linear time.
 
 	
@@ -158,7 +180,7 @@ pop(sd) or del_last(sd)
 del_first_kv(sd)
 del_last_kv(sd)
 
-	Destructive functions that removes and returns items from the extreme ends of a non-empty SortDict.
+	Destructive functions that removes and returns items from the extreme ends of a non-empty SDict.
 	Runs in log n
 
 	
@@ -186,10 +208,10 @@ get_kv(sd, key, default)
 	
 rank(sd, key)
 
-	Returns the position of key in the SortDict
+	Returns the position of key in the SDict
 	example:
 	
-	sd = SortDict(["Aardvark", "baa", "cab", "dab"], [8,3,3,3])
+	sd = SDict(["Aardvark", "baa", "cab", "dab"], [8,3,3,3])
 
 	rank(sd, "Aardvark") 	=> 1
 	
@@ -212,27 +234,29 @@ after(sd, key)
 before_kv(sd, key)
 after_kv(sd, key)
 
-	returns the (key, value) tuple that comes just before or just after key.
-	An exception is thrown if there is nothing in the SortDict before or after the key.
+	returns the value or (key, value) tuple that comes just before or just after key.
+	An exception is thrown if there is nothing in the SDict before or after the key.
 	However, the key need not exist, so the following works:
 	
-	sd = SortDict(["Aardvark", "baa", "cab", "dab"], [8,3,3,3])
+	sd = SDict(["Aardvark", "baa", "cab", "dab"], [8,3,3,3])
 	
 	before(sd, "zebra") 	=> ("dab", 3)
 
 	Runs in O(log n)
-	
+
+
 	
 union(sd1, sd2)
 
-	Returs the union of the two SortDicts. Compare functions must be identical.
+	Returs the union of the two SDicts. Compare functions must be identical.
 	The values from sd2 are used whenever equal keys are encountered.  
 	Runs in O(n).
+
 
 	Much faster union can be achieved with join! and split! if you happen to know that the keys in the
 	respective dicts do not overlap much. Example:
 	
-	function union_quick!{K, V} (sd1 :: SortDict{K, V}, sd2 :: SortDict{K, V})
+	function union_quick!{K, V} (sd1 :: SDict{K, V}, sd2 :: SDict{K, V})
 		# assume sd1 keys mostly smaller than sd2 keys
 		a = first_kv(sd2)[KEY]
 		b = last_kv(sd1)[KEY]

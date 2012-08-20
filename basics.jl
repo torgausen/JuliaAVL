@@ -13,12 +13,23 @@ function has{K, V}(node :: Node{K, V}, key :: K, cf :: Function)
 	end
 end
 
-get_kv{K, V} (node :: Nil{K, V}, key :: K, default :: V, cf :: Function) = default
-function getkv{K, V}(node :: Node{K, V}, key :: K, default :: V, cf :: Function)
+get{K, V} (node :: Nil{K, V}, key :: K, default :: V, cf :: Function) = default
+function get{K, V}(node :: Node{K, V}, key :: K, default :: V, cf :: Function)
 	if cf(key, node.key)
-		getkv(node.child[LEFT], key, default, cf)
+		get(node.child[LEFT], key, default, cf)
 	elseif cf(node.key, key)
-		getkv(node.child[RIGHT], key, default, cf)
+		get(node.child[RIGHT], key, default, cf)
+	else
+		return node.value
+	end
+end
+
+get_kv{K, V} (node :: Nil{K, V}, key :: K, default :: V, cf :: Function) = default
+function get_kv{K, V}(node :: Node{K, V}, key :: K, default :: V, cf :: Function)
+	if cf(key, node.key)
+		get_kv(node.child[LEFT], key, default, cf)
+	elseif cf(node.key, key)
+		get_kv(node.child[RIGHT], key, default, cf)
 	else
 		return (node.key, node.value)
 	end
